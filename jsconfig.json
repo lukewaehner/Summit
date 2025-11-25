@@ -2,12 +2,14 @@
   "compilerOptions": {
     "allowJs": true,
     "checkJs": true,
+    "noEmit": true,
     "types": [
       "google-apps-script"
     ],
     "lib": [
       "es2015"
-    ]
+    ],
+    "target": "es2015"
   },
   "include": [
     "**/*.js"
