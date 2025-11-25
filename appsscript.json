@@ -1,7 +1,48 @@
 {
   "timeZone": "America/New_York",
-  "dependencies": {
-  },
+  "dependencies": {},
   "exceptionLogging": "STACKDRIVER",
-  "runtimeVersion": "V8"
+  "runtimeVersion": "V8",
+  "files": [
+    {
+      "name": "Config",
+      "type": "server_js",
+      "source": "Config.js"
+    },
+    {
+      "name": "spreadsheet",
+      "type": "server_js",
+      "source": "helpers/spreadsheet.js"
+    },
+    {
+      "name": "Meeting",
+      "type": "server_js",
+      "source": "models/Meeting.js"
+    },
+    {
+      "name": "MeetingDataService",
+      "type": "server_js",
+      "source": "services/MeetingDataService.js"
+    },
+    {
+      "name": "StudentDataService",
+      "type": "server_js",
+      "source": "services/StudentDataService.js"
+    },
+    {
+      "name": "meetingHelpers",
+      "type": "server_js",
+      "source": "helpers/meetingHelpers.js"
+    },
+    {
+      "name": "MeetingOrchestrator",
+      "type": "server_js",
+      "source": "orchestrators/MeetingOrchestrator.js"
+    },
+    {
+      "name": "Main",
+      "type": "server_js",
+      "source": "Main.js"
+    }
+  ]
 }

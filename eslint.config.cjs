@@ -1,3 +1,4 @@
+/* eslint-env node */
 const js = require("@eslint/js");
 const googleappsscript = require("eslint-plugin-googleappsscript");
 
@@ -15,13 +16,39 @@ module.exports = [
         // ES globals are already covered by js.configs.recommended;
         // here we add Apps Script globals:
         ...googleappsscript.environments.googleappsscript.globals,
-        spreadsheetHelperFunctions: "readonly",
-        CONFIG: "readonly",
+        // Global configuration and utilities (defined across files)
+        CONFIG: "writable",
+        spreadsheetHelperFunctions: "writable",
+        // Models
+        Meeting: "writable",
+        // Services
+        MeetingDataService: "writable",
+        StudentDataService: "writable",
+        // Helpers
+        meetingHelpers: "writable",
+        // Orchestrators & Entry Points
+        loadMeetings: "writable",
+        sendMeetingNotes: "writable",
+        syncAllData: "writable",
+        updateStudentDataSpreadhseet: "writable",
+        grabAllMeetings: "writable",
+        trackMeetingsToStudents: "writable",
+        buildMeetingRowsForStudent: "writable",
+        getMeetingTimestamp: "writable",
       },
     },
     rules: {
-      // your custom rules here if you want
-      // "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+      // Allow unused vars for function params (Apps Script entry points)
+      "no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern:
+            "^(CONFIG|Meeting|meetingHelpers|MeetingDataService|StudentDataService|loadMeetings|sendMeetingNotes|syncAllData|updateStudentDataSpreadhseet|grabAllMeetings|trackMeetingsToStudents|buildMeetingRowsForStudent|getMeetingTimestamp|spreadsheetHelperFunctions)$",
+        },
+      ],
+      // Allow redeclaration for Apps Script backwards compatibility
+      "no-redeclare": "off",
     },
   },
 ];
