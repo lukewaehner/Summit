@@ -49,18 +49,18 @@ const MeetingDataService = {
         break;
       }
 
-      // Adjust date for timezone - add 1 hour to compensate for timezone offset
-      let adjustedDate = date;
-      if (date instanceof Date) {
-        adjustedDate = new Date(date.getTime() + 60 * 60 * 1000); // Add 1 hour in milliseconds
+      // Timezone adjustment needed
+      let adjustedTime = time;
+      if (time instanceof Date) {
+        adjustedTime = new Date(time.getTime() + 60 * 60 * 1000); // Add 1 hour in milliseconds
       }
 
       // Push all
       const meeting = new Meeting(
         name,
         "",
-        adjustedDate,
-        time,
+        date,
+        adjustedTime,
         advisor,
         description
       );
