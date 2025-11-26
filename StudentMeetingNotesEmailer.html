@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 10px;
+      }
+      .student-section {
+        margin-bottom: 20px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 10px;
+      }
+      .student-name {
+        font-weight: bold;
+        font-size: 16px;
+        margin-bottom: 10px;
+        color: #333;
+      }
+      .meeting {
+        margin: 8px 0;
+        padding: 8px;
+        background: #f9f9f9;
+        border-left: 3px solid #4caf50;
+        border-radius: 3px;
+      }
+      .meeting-header {
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+      .meeting-preview {
+        font-size: 12px;
+        color: #666;
+        margin: 5px 0;
+      }
+      button {
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+      .no-meetings {
+        color: #999;
+        font-style: italic;
+        font-size: 14px;
+      }
+      .loading {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loading" class="loading">Loading students and meetings...</div>
+    <div id="students"></div>
+
+    <script>
+      console.log("Starting to load students...");
+
+      // Set a timeout to show if the function is hanging
+      var timeout = setTimeout(function () {
+        console.error("Function timed out after 30 seconds");
+        document.getElementById("loading").innerHTML =
+          '<p style="color: orange;">Loading is taking longer than expected. Check the Apps Script logs for details.</p>';
+      }, 30000);
+
+      google.script.run
+        .withSuccessHandler(function (studentsData) {
+          clearTimeout(timeout);
+          console.log("Success! Received data:", studentsData);
+          console.log("Data type:", typeof studentsData);
+          console.log("Is array:", Array.isArray(studentsData));
+          console.log(
+            "Data length:",
+            studentsData ? studentsData.length : "null/undefined"
+          );
+
+          if (studentsData) {
+            console.log("First student:", studentsData[0]);
+          }
+
+          document.getElementById("loading").style.display = "none";
+          const container = document.getElementById("students");
+
+          if (!studentsData || studentsData.length === 0) {
+            container.innerHTML =
+              '<p class="no-meetings">No students found.</p>';
+            return;
+          }
+
+          console.log("Processing " + studentsData.length + " students");
+
+          studentsData.forEach(function (student) {
+            const section = document.createElement("div");
+            section.className = "student-section";
+
+            const nameDiv = document.createElement("div");
+            nameDiv.className = "student-name";
+            nameDiv.textContent = student.name;
+            section.appendChild(nameDiv);
+
+            if (!student.meetings || student.meetings.length === 0) {
+              const noMeetings = document.createElement("div");
+              noMeetings.className = "no-meetings";
+              noMeetings.textContent = "No meetings with notes available";
+              section.appendChild(noMeetings);
+            } else {
+              console.log(
+                student.name + " has " + student.meetings.length + " meetings"
+              );
+
+              student.meetings.forEach(function (meeting) {
+                const meetingDiv = document.createElement("div");
+                meetingDiv.className = "meeting";
+
+                const header = document.createElement("div");
+                header.className = "meeting-header";
+                header.textContent = meeting.dateStr + " at " + meeting.timeStr;
+                meetingDiv.appendChild(header);
+
+                const preview = document.createElement("div");
+                preview.className = "meeting-preview";
+                preview.textContent = meeting.preview;
+                meetingDiv.appendChild(preview);
+
+                const btn = document.createElement("button");
+                btn.textContent = "Send Email";
+                btn.onclick = function () {
+                  btn.disabled = true;
+                  btn.textContent = "Sending...";
+
+                  google.script.run
+                    .withSuccessHandler(function () {
+                      btn.textContent = "✓ Sent!";
+                      btn.style.backgroundColor = "#2196F3";
+                      setTimeout(function () {
+                        btn.textContent = "Send Email";
+                        btn.disabled = false;
+                        btn.style.backgroundColor = "";
+                      }, 3000);
+                    })
+                    .withFailureHandler(function (error) {
+                      console.error("Error sending email:", error);
+                      alert("Error sending email: " + error.message);
+                      btn.disabled = false;
+                      btn.textContent = "Send Email";
+                    })
+                    .sendMeetingNotesEmail(
+                      student.name,
+                      student.url,
+                      meeting.row,
+                      meeting.dateStr,
+                      meeting.timeStr,
+                      meeting.notes
+                    );
+                };
+                meetingDiv.appendChild(btn);
+
+                section.appendChild(meetingDiv);
+              });
+            }
+
+            container.appendChild(section);
+          });
+
+          console.log("Finished rendering all students");
+        })
+        .withFailureHandler(function (error) {
+          clearTimeout(timeout);
+          console.error("Failure handler triggered:", error);
+
+          document.getElementById("loading").style.display = "none";
+          document.getElementById("students").innerHTML =
+            '<p style="color: red;">Error loading data: ' +
+            (error.message || error.toString()) +
+            "</p>" +
+            '<p style="color: #666; font-size: 12px;">Check the browser console (F12) and Apps Script execution logs for more details.</p>';
+        })
+        .getStudentsWithMeetings();
+
+      console.log("Function call initiated");
+    </script>
+  </body>
+</html>
