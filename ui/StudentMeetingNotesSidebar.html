@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Google Sans', Roboto, Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #fff;
+      color: #202124;
+    }
+    
+    h2 {
+      font-size: 18px;
+      font-weight: 500;
+      margin: 0 0 16px 0;
+      color: #202124;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px 0;
+      color: #5f6368;
+    }
+    
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid #e8eaed;
+      border-top-color: #1a73e8;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 12px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .error {
+      background: #fce8e6;
+      color: #c5221f;
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    
+    .student-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .student-item {
+      padding: 12px;
+      border-bottom: 1px solid #e8eaed;
+      transition: background 0.15s;
+    }
+    
+    .student-item:hover {
+      background: #f8f9fa;
+    }
+    
+    .student-item:last-child {
+      border-bottom: none;
+    }
+    
+    .student-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: #202124;
+      margin-bottom: 4px;
+    }
+    
+    .student-link {
+      font-size: 13px;
+      color: #1a73e8;
+      text-decoration: none;
+      word-break: break-all;
+    }
+    
+    .student-link:hover {
+      text-decoration: underline;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 40px 0;
+      color: #5f6368;
+      font-size: 14px;
+    }
+    
+    .count {
+      font-size: 12px;
+      color: #5f6368;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Students</h2>
+  <div id="content">
+    <div class="loading">
+      <div class="spinner"></div>
+      <div>Loading students...</div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      loadStudentData();
+    });
+
+    function loadStudentData() {
+      console.log('Loading student data from server...');
+      google.script.run
+        .withSuccessHandler(displayStudents)
+        .withFailureHandler(displayError)
+        .getStudentData();
+      console.log(`Result has returned.`)
+    }
+
+    function displayStudents(students) {
+      console.log('Displaying student data:', students);
+      console.log(`Number of students received: ${students.length}`);
+      console.log(`First student (if any): ${students.length > 0 ? JSON.stringify(students[0]) : 'N/A'}`);
+
+      var content = document.getElementById('content');
+      
+      if (!students || students.length === 0) {
+        content.innerHTML = '<div class="empty-state">No students found.</div>';
+        return;
+      }
+
+      var html = '<div class="count">' + students.length + ' student' + (students.length !== 1 ? 's' : '') + '</div>';
+      html += '<ul class="student-list">';
+      
+      students.forEach(function(student) {
+        html += '<li class="student-item">';
+        html += '<div class="student-name">' + escapeHtml(student.name) + '</div>';
+        if (student.url) {
+          html += '<a class="student-link" href="' + escapeHtml(student.url) + '" target="_blank">' + escapeHtml(student.url) + '</a>';
+        }
+        html += '</li>';
+      });
+      
+      html += '</ul>';
+      content.innerHTML = html;
+    }
+
+    function displayError(error) {
+      var content = document.getElementById('content');
+      content.innerHTML = '<div class="error">Error loading data: ' + escapeHtml(error.message || 'Unknown error') + '</div>';
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      var div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

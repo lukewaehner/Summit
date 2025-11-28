@@ -35,6 +35,7 @@ module.exports = [
         trackMeetingsToStudents: "writable",
         buildMeetingRowsForStudent: "writable",
         getMeetingTimestamp: "writable",
+        getStudentData: "writeable",
       },
     },
     rules: {

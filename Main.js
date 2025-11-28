@@ -43,3 +43,12 @@ function syncAllData() {
 function updateStudentDataSpreadhseet() {
   StudentDataService.updateStudentDataSheet();
 }
+
+function getStudentDataCheck() {
+  var students = getStudentData();
+  for (var i = 0; i < students.length; i++) {
+    Logger.log(students[i]);
+    Logger.log(students[i].name);
+    Logger.log(students[i].url);
+  }
+}
