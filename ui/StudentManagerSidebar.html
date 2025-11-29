@@ -1,176 +1,258 @@
 <!DOCTYPE html>
+<!--
+  Student Manager Sidebar
+  
+  Purpose: Main sidebar for Summit CRM that displays a list of all students
+  and allows navigation to individual student meeting views.
+  
+  Data Flow:
+  1. On load, calls getStudentData() via google.script.run
+  2. Displays student list with names and spreadsheet URLs
+  3. Clicking a student fetches their meetings and opens StudentMeetingNotesSidebar
+  
+  Server Functions Called:
+  - getStudentData(): Fetches all students from Student Data sheet
+  - getStudentMeetings(url): Fetches meetings for a specific student
+  - openStudentMeetingSidebar(data): Opens the meeting view sidebar
+-->
 <html>
-<head>
-  <base target="_top">
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      font-family: 'Google Sans', Roboto, Arial, sans-serif;
-      margin: 0;
-      padding: 16px;
-      background: #fff;
-      color: #202124;
-    }
-    h2 {
-      font-size: 18px;
-      font-weight: 500;
-      margin: 0 0 16px 0;
-    }
-    .loading {
-      text-align: center;
-      padding: 40px 0;
-      color: #5f6368;
-    }
-    .spinner {
-      width: 24px;
-      height: 24px;
-      border: 3px solid #e8eaed;
-      border-top-color: #1a73e8;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 12px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .error {
-      background: #fce8e6;
-      color: #c5221f;
-      padding: 12px;
-      border-radius: 4px;
-      font-size: 13px;
-    }
-    .student-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .student-item {
-      padding: 12px;
-      border-bottom: 1px solid #e8eaed;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .student-item:hover {
-      background: #f8f9fa;
-    }
-    .student-item:last-child {
-      border-bottom: none;
-    }
-    .student-name {
-      font-size: 14px;
-      font-weight: 500;
-      color: #202124;
-      margin-bottom: 4px;
-    }
-    .student-url {
-      font-size: 12px;
-      color: #5f6368;
-      word-break: break-all;
-    }
-    .empty-state {
-      text-align: center;
-      padding: 40px 0;
-      color: #5f6368;
-      font-size: 14px;
-    }
-    .count {
-      font-size: 12px;
-      color: #5f6368;
-      margin-bottom: 12px;
-    }
-    .click-hint {
-      font-size: 11px;
-      color: #1a73e8;
-      margin-top: 4px;
-    }
-  </style>
-</head>
-<body>
-  <h2>Students</h2>
-  <div id="content">
-    <div class="loading">
-      <div class="spinner"></div>
-      <div>Loading students...</div>
+  <head>
+    <base target="_top" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Google Sans", Roboto, Arial, sans-serif;
+        margin: 0;
+        padding: 16px;
+        background: #fff;
+        color: #202124;
+      }
+      h2 {
+        font-size: 18px;
+        font-weight: 500;
+        margin: 0 0 16px 0;
+      }
+      .loading {
+        text-align: center;
+        padding: 40px 0;
+        color: #5f6368;
+      }
+      .spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid #e8eaed;
+        border-top-color: #1a73e8;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 12px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .error {
+        background: #fce8e6;
+        color: #c5221f;
+        padding: 12px;
+        border-radius: 4px;
+        font-size: 13px;
+      }
+      .student-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .student-item {
+        padding: 12px;
+        border-bottom: 1px solid #e8eaed;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .student-item:hover {
+        background: #f8f9fa;
+      }
+      .student-item:last-child {
+        border-bottom: none;
+      }
+      .student-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: #202124;
+        margin-bottom: 4px;
+      }
+      .student-url {
+        font-size: 12px;
+        color: #1a73e8;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .student-url:hover {
+        text-decoration: underline;
+      }
+      .empty-state {
+        text-align: center;
+        padding: 40px 0;
+        color: #5f6368;
+        font-size: 14px;
+      }
+      .count {
+        font-size: 12px;
+        color: #5f6368;
+        margin-bottom: 12px;
+      }
+      .click-hint {
+        font-size: 11px;
+        color: #1a73e8;
+        margin-top: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Students</h2>
+    <div id="content">
+      <div class="loading">
+        <div class="spinner"></div>
+        <div>Loading students...</div>
+      </div>
     </div>
-  </div>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      loadStudentData();
-    });
+    <script>
+      /**
+       * Client-side JavaScript for Student Manager Sidebar
+       * Handles loading and displaying student list, and navigating to meeting views
+       */
 
-    function loadStudentData() {
-      console.log('Loading student data from server...');
-      google.script.run
-        .withSuccessHandler(displayStudents)
-        .withFailureHandler(displayError)
-        .getStudentData();
-    }
+      // Initialize sidebar when DOM is ready
+      document.addEventListener("DOMContentLoaded", function () {
+        loadStudentData();
+      });
 
-    function displayStudents(students) {
-      console.log('Displaying student data:', students);
-      var content = document.getElementById('content');
-      
-      if (!students || students.length === 0) {
-        content.innerHTML = '<div class="empty-state">No students found.</div>';
-        return;
+      /**
+       * Loads student data from the server.
+       * Calls the server-side getStudentData() function which reads from the Student Data sheet.
+       */
+      function loadStudentData() {
+        console.log("Loading student data from server...");
+        google.script.run
+          .withSuccessHandler(displayStudents)
+          .withFailureHandler(displayError)
+          .getStudentData();
       }
 
-      var html = '<div class="count">' + students.length + ' student' + (students.length !== 1 ? 's' : '') + '</div>';
-      html += '<ul class="student-list">';
-      
-      students.forEach(function(student, index) {
-        html += '<li class="student-item" data-index="' + index + '">';
-        html += '<div class="student-name">' + escapeHtml(student.name) + '</div>';
-        if (student.url) {
-          html += '<div class="student-url">' + escapeHtml(student.url) + '</div>';
+      /**
+       * Displays the list of students in the sidebar.
+       * Creates clickable list items for each student showing their name and spreadsheet URL.
+       *
+       * @param {Array<{name: string, url: string}>} students - Array of student objects
+       */
+      function displayStudents(students) {
+        console.log("Displaying student data:", students);
+        var content = document.getElementById("content");
+
+        // Handle empty state - no students found
+        if (!students || students.length === 0) {
+          content.innerHTML =
+            '<div class="empty-state">No students found.</div>';
+          return;
         }
-        html += '<div class="click-hint">Click to view meetings</div>';
-        html += '</li>';
-      });
-      
-      html += '</ul>';
-      content.innerHTML = html;
 
-      // Store students for click handler
-      window.studentsData = students;
+        // Build HTML for student count with proper pluralization
+        var html =
+          '<div class="count">' +
+          students.length +
+          " student" +
+          (students.length !== 1 ? "s" : "") +
+          "</div>";
+        html += '<ul class="student-list">';
 
-      // Add click handlers
-      document.querySelectorAll('.student-item').forEach(function(item) {
-        item.addEventListener('click', function() {
-          var index = parseInt(this.getAttribute('data-index'));
-          var student = window.studentsData[index];
-          openStudentMeetings(student);
+        // Create a list item for each student with data-index for click handling
+        students.forEach(function (student, index) {
+          html += '<li class="student-item" data-index="' + index + '">';
+          html +=
+            '<div class="student-name">' + escapeHtml(student.name) + "</div>";
+          if (student.url) {
+            html +=
+              '<a href="' +
+              escapeHtml(student.url) +
+              '" target="_blank" class="student-url" onclick="event.stopPropagation()">Spreadsheet Link</a>';
+          }
+          html += '<div class="click-hint">Click to view meetings</div>';
+          html += "</li>";
         });
-      });
-    }
 
-    function openStudentMeetings(student) {
-      var content = document.getElementById('content');
-      content.innerHTML = '<div class="loading"><div class="spinner"></div><div>Loading meetings...</div></div>';
-      
-      google.script.run
-        .withSuccessHandler(function(meetings) {
-          // Pass both student name and meetings to the next sidebar
-          google.script.run.openStudentMeetingSidebar({
-            studentName: student.name,
-            meetings: meetings
+        html += "</ul>";
+        content.innerHTML = html;
+
+        // Store students array in window for click handler access
+        window.studentsData = students;
+
+        // Attach click handlers to each student item
+        document.querySelectorAll(".student-item").forEach(function (item) {
+          item.addEventListener("click", function () {
+            var index = parseInt(this.getAttribute("data-index"));
+            var student = window.studentsData[index];
+            openStudentMeetings(student);
           });
-        })
-        .withFailureHandler(displayError)
-        .getStudentMeetings(student.url);
-    }
+        });
+      }
 
-    function displayError(error) {
-      var content = document.getElementById('content');
-      content.innerHTML = '<div class="error">Error: ' + escapeHtml(error.message || 'Unknown error') + '</div>';
-    }
+      /**
+       * Opens the meetings view for a selected student.
+       * Shows loading state, fetches meetings from server, then opens meeting sidebar.
+       *
+       * @param {Object} student - Student object with name, url, and email
+       * @param {string} student.name - Student's name
+       * @param {string} student.url - URL to student's spreadsheet
+       * @param {string} student.email - Student's email address
+       */
+      function openStudentMeetings(student) {
+        var content = document.getElementById("content");
+        // Show loading spinner while fetching meetings
+        content.innerHTML =
+          '<div class="loading"><div class="spinner"></div><div>Loading meetings...</div></div>';
 
-    function escapeHtml(text) {
-      if (!text) return '';
-      var div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-  </script>
-</body>
+        // Fetch meetings for this student from their spreadsheet
+        google.script.run
+          .withSuccessHandler(function (meetings) {
+            // Open the meeting notes sidebar with student name, email, and meetings data
+            google.script.run.openStudentMeetingSidebar({
+              studentName: student.name,
+              studentEmail: student.email || "",
+              meetings: meetings,
+            });
+          })
+          .withFailureHandler(displayError)
+          .getStudentMeetings(student.url);
+      }
+
+      /**
+       * Displays an error message in the sidebar.
+       * @param {Error} error - Error object with message property
+       */
+      function displayError(error) {
+        var content = document.getElementById("content");
+        content.innerHTML =
+          '<div class="error">Error: ' +
+          escapeHtml(error.message || "Unknown error") +
+          "</div>";
+      }
+
+      /**
+       * Escapes HTML special characters to prevent XSS attacks.
+       * @param {string} text - Text to escape
+       * @returns {string} HTML-safe text
+       */
+      function escapeHtml(text) {
+        if (!text) return "";
+        var div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+      }
+    </script>
+  </body>
 </html>

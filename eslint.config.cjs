@@ -35,7 +35,17 @@ module.exports = [
         trackMeetingsToStudents: "writable",
         buildMeetingRowsForStudent: "writable",
         getMeetingTimestamp: "writable",
-        getStudentData: "writeable",
+        // UI Entry Points (wrapper functions for sidebars)
+        getStudentData: "writable",
+        getStudentMeetings: "writable",
+        openSidebar: "writable",
+        openStudentMeetingSidebar: "writable",
+        getStudentManagerSidebarHtml: "writable",
+        getStudentMeetingSidebarHtml: "writable",
+        startMenu: "writable",
+        getStudentDataCheck: "writable",
+        // Email Functions
+        sendMeetingNotesEmail: "writable",
       },
     },
     rules: {
@@ -45,7 +55,7 @@ module.exports = [
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern:
-            "^(CONFIG|Meeting|meetingHelpers|MeetingDataService|StudentDataService|loadMeetings|sendMeetingNotes|syncAllData|updateStudentDataSpreadhseet|grabAllMeetings|trackMeetingsToStudents|buildMeetingRowsForStudent|getMeetingTimestamp|spreadsheetHelperFunctions)$",
+            "^(CONFIG|Meeting|meetingHelpers|MeetingDataService|StudentDataService|loadMeetings|sendMeetingNotes|syncAllData|updateStudentDataSpreadhseet|grabAllMeetings|trackMeetingsToStudents|buildMeetingRowsForStudent|getMeetingTimestamp|spreadsheetHelperFunctions|getStudentData|getStudentMeetings|openSidebar|openStudentMeetingSidebar|getStudentManagerSidebarHtml|getStudentMeetingSidebarHtml|startMenu|getStudentDataCheck|sendMeetingNotesEmail)$",
         },
       ],
       // Allow redeclaration for Apps Script backwards compatibility

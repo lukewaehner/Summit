@@ -1,130 +1,307 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <base target="_top">
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      font-family: 'Google Sans', Roboto, Arial, sans-serif;
-      margin: 0;
-      padding: 16px;
-      background: #fff;
-      color: #202124;
-    }
-    .back-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 13px;
-      color: #1a73e8;
-      cursor: pointer;
-      margin-bottom: 12px;
-      padding: 4px 0;
-    }
-    .back-btn:hover {
-      text-decoration: underline;
-    }
-    h2 {
-      font-size: 18px;
-      font-weight: 500;
-      margin: 0 0 4px 0;
-    }
-    .student-name {
-      font-size: 14px;
-      color: #5f6368;
-      margin-bottom: 16px;
-    }
-    .meeting-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .meeting-item {
-      padding: 12px;
-      border: 1px solid #e8eaed;
-      border-radius: 8px;
-      margin-bottom: 12px;
-      background: #fafafa;
-    }
-    .meeting-header {
-      margin-bottom: 8px;
-    }
-    .meeting-datetime {
-      font-size: 14px;
-      font-weight: 500;
-      color: #202124;
-    }
-    .meeting-notes {
-      font-size: 13px;
-      color: #3c4043;
-      line-height: 1.5;
-      white-space: pre-wrap;
-    }
-    .empty-state {
-      text-align: center;
-      padding: 40px 0;
-      color: #5f6368;
-      font-size: 14px;
-    }
-    .count {
-      font-size: 12px;
-      color: #5f6368;
-      margin-bottom: 12px;
-    }
-  </style>
-</head>
-<body>
-  <div class="back-btn" onclick="goBack()">← Back to Students</div>
-  <h2>Meetings</h2>
-  <div class="student-name"><?= data.studentName ?></div>
-  
-  <div id="content">
-    <? if (data.meetings && data.meetings.length > 0) { ?>
-      <div class="count"><?= data.meetings.length ?> meeting<?= data.meetings.length !== 1 ? 's' : '' ?></div>
-      <ul class="meeting-list">
-        <? 
-        var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        
-        data.meetings.forEach(function(meeting) { 
-          var displayStr = '';
+  <head>
+    <base target="_top" />
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: "Google Sans", Roboto, Arial, sans-serif;
+        margin: 0;
+        padding: 16px;
+        background: #fff;
+        color: #202124;
+      }
+      .back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 13px;
+        color: #1a73e8;
+        cursor: pointer;
+        margin-bottom: 12px;
+        padding: 4px 0;
+      }
+      .back-btn:hover { text-decoration: underline; }
+      h2 {
+        font-size: 18px;
+        font-weight: 500;
+        margin: 0 0 4px 0;
+      }
+      .student-name {
+        font-size: 14px;
+        color: #5f6368;
+        margin-bottom: 16px;
+      }
+      .meeting-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .meeting-item {
+        padding: 12px;
+        border: 1px solid #e8eaed;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        background: #fafafa;
+      }
+      .meeting-header { margin-bottom: 8px; }
+      .meeting-datetime {
+        font-size: 14px;
+        font-weight: 500;
+        color: #202124;
+      }
+      .meeting-notes {
+        font-size: 13px;
+        color: #3c4043;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        margin-bottom: 12px;
+      }
+      .send-email-btn {
+        background: #1a73e8;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .send-email-btn:hover { background: #1557b0; }
+      .send-email-btn:disabled {
+        background: #dadce0;
+        cursor: not-allowed;
+      }
+      .send-email-btn::before {
+        content: "✉️";
+        font-size: 14px;
+      }
+      .empty-state {
+        text-align: center;
+        padding: 40px 0;
+        color: #5f6368;
+        font-size: 14px;
+      }
+      .count {
+        font-size: 12px;
+        color: #5f6368;
+        margin-bottom: 12px;
+      }
+      .success-message {
+        background: #e6f4ea;
+        color: #137333;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        margin-top: 8px;
+        display: none;
+      }
+      .error-message {
+        background: #fce8e6;
+        color: #c5221f;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        margin-top: 8px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="back-btn" onclick="goBack()">← Back to Students</div>
+    <h2>Meetings</h2>
+    <div class="student-name"><?= data.studentName ?></div>
+
+    <div id="content">
+      <? if (data.meetings && data.meetings.length > 0) { ?>
+        <div class="count">
+          <?= data.meetings.length ?> meeting<?= data.meetings.length !== 1 ? 's' : '' ?>
+        </div>
+        <ul class="meeting-list">
+          <? 
+          var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
           
-          // Format date portion
-          if (meeting.date instanceof Date) {
-            var mon = months[meeting.date.getMonth()];
-            var dd = meeting.date.getDate();
-            var yyyy = meeting.date.getFullYear();
-            displayStr = mon + ' ' + dd + ', ' + yyyy;
-          } else {
-            displayStr = String(meeting.date);
-          }
-          
-          // Format time portion (use UTC to avoid timezone shift)
-          if (meeting.time instanceof Date) {
-            var hours = meeting.time.getUTCHours();
-            var minutes = meeting.time.getUTCMinutes();
-            minutes = minutes < 10 ? '0' + minutes : minutes;
-            displayStr += ' (' + hours + ':' + minutes + ')';
-          } else if (meeting.time) {
-            displayStr += ' (' + meeting.time + ')';
-          }
-        ?>
-          <li class="meeting-item">
+          for (var i = 0; i < data.meetings.length; i++) {
+            var meeting = data.meetings[i];
+            var displayStr = '';
+            
+            // Format date
+            if (meeting.date instanceof Date) {
+              var mon = months[meeting.date.getMonth()];
+              var dd = meeting.date.getDate();
+              var yyyy = meeting.date.getFullYear();
+              displayStr = mon + ' ' + dd + ', ' + yyyy;
+            } else {
+              displayStr = String(meeting.date);
+            }
+            
+            // Format time
+            if (meeting.time instanceof Date) {
+              var hours = meeting.time.getHours();
+              var minutes = meeting.time.getMinutes();
+              var ampm = hours >= 12 ? 'PM' : 'AM';
+              hours = hours % 12;
+              hours = hours ? hours : 12;
+              minutes = minutes < 10 ? '0' + minutes : minutes;
+              displayStr += ' (' + hours + ':' + minutes + ' ' + ampm + ')';
+            } else if (meeting.time) {
+              displayStr += ' (' + meeting.time + ')';
+            }
+          ?>
+          <li class="meeting-item" data-meeting-index="<?= i ?>">
             <div class="meeting-header">
               <span class="meeting-datetime"><?= displayStr ?></span>
             </div>
             <div class="meeting-notes"><?= meeting.notes ?></div>
+            <button
+              class="send-email-btn"
+              data-meeting-index="<?= i ?>"
+              onclick="sendMeetingEmail(<?= i ?>)"
+            >
+              Send Email
+            </button>
+            <div class="success-message" id="success-<?= i ?>"></div>
+            <div class="error-message" id="error-<?= i ?>"></div>
           </li>
-        <? }); ?>
-      </ul>
-    <? } else { ?>
-      <div class="empty-state">No meetings found for this student.</div>
-    <? } ?>
-  </div>
+          <? } ?>
+        </ul>
+      <? } else { ?>
+        <div class="empty-state">No meetings found for this student.</div>
+      <? } ?>
+    </div>
 
-  <script>
-    function goBack() {
-      google.script.run.openSidebar();
-    }
-  </script>
-</body>
+    <script>
+      var meetingsData = <?!= JSON.stringify(data.meetings) ?>;
+      var studentName = "<?= data.studentName ?>";
+      var studentEmail = "<?= data.studentEmail || '' ?>";
+
+      function goBack() {
+        google.script.run.openSidebar();
+      }
+
+      function sendMeetingEmail(meetingIndex) {
+        var meeting = meetingsData[meetingIndex];
+        var email = studentEmail;
+
+        if (!email) {
+          email = prompt("Enter the student's email address:");
+          if (!email) return;
+        } else {
+          var confirmedEmail = prompt(
+            "Send meeting notes to this email address?\n(Edit if needed)",
+            email
+          );
+          if (!confirmedEmail) return;
+          email = confirmedEmail;
+        }
+
+        if (!email.includes("@")) {
+          showError(meetingIndex, "Please enter a valid email address.");
+          return;
+        }
+
+        var button = document.querySelector(
+          '.send-email-btn[data-meeting-index="' + meetingIndex + '"]'
+        );
+
+        if (button) {
+          button.disabled = true;
+          button.textContent = "Sending...";
+        }
+
+        var datetime = formatDateTime(meeting.date, meeting.time);
+
+        google.script.run
+          .withSuccessHandler(function (result) {
+            if (button) {
+              button.disabled = false;
+              button.textContent = "Send Email";
+            }
+            if (result.success) {
+              showSuccess(meetingIndex, result.message);
+            } else {
+              showError(meetingIndex, result.message);
+            }
+          })
+          .withFailureHandler(function (error) {
+            if (button) {
+              button.disabled = false;
+              button.textContent = "Send Email";
+            }
+            showError(meetingIndex, "Error: " + error.message);
+          })
+          .sendMeetingNotesEmail(studentName, datetime, meeting.notes, email);
+      }
+
+      function formatDateTime(date, time) {
+        var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        var dateStr = "";
+
+        var dateObj;
+        if (date instanceof Date) {
+          dateObj = date;
+        } else if (typeof date === "string") {
+          dateObj = new Date(date);
+        }
+
+        if (dateObj && !isNaN(dateObj.getTime())) {
+          var monthName = months[dateObj.getMonth()];
+          var dayNum = dateObj.getDate();
+          var year = dateObj.getFullYear();
+          dateStr = monthName + " " + dayNum + ", " + year;
+        } else {
+          dateStr = String(date);
+        }
+
+        var timeStr = "";
+        if (time) {
+          var timeObj;
+          if (time instanceof Date) {
+            timeObj = time;
+          } else if (typeof time === "string") {
+            timeObj = new Date(time);
+          }
+
+          if (timeObj && !isNaN(timeObj.getTime())) {
+            var hours = timeObj.getHours();
+            var minutes = timeObj.getMinutes();
+            var ampm = hours >= 12 ? "PM" : "AM";
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            minutes = minutes < 10 ? "0" + minutes : minutes;
+            timeStr = " (" + hours + ":" + minutes + " " + ampm + ")";
+          } else if (typeof time === "string" && time.trim()) {
+            var cleanTime = time.trim();
+            if (!cleanTime.includes("GMT") && !cleanTime.includes("1899")) {
+              timeStr = " (" + cleanTime + ")";
+            }
+          }
+        }
+
+        return dateStr + timeStr;
+      }
+
+      function showSuccess(meetingIndex, message) {
+        var successEl = document.getElementById('success-' + meetingIndex);
+        var errorEl = document.getElementById('error-' + meetingIndex);
+        errorEl.style.display = 'none';
+        successEl.textContent = message;
+        successEl.style.display = 'block';
+        setTimeout(function() { successEl.style.display = 'none'; }, 5000);
+      }
+
+      function showError(meetingIndex, message) {
+        var successEl = document.getElementById('success-' + meetingIndex);
+        var errorEl = document.getElementById('error-' + meetingIndex);
+        successEl.style.display = 'none';
+        errorEl.textContent = message;
+        errorEl.style.display = 'block';
+        setTimeout(function() { errorEl.style.display = 'none'; }, 7000);
+      }
+    </script>
+  </body>
 </html>

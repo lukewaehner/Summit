@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<!--
+  Email Template for Summit Meeting Notes
+  
+  Purpose: Professional HTML email template for sending meeting notes to students.
+  Creates a beautifully formatted email with student name, meeting datetime, and notes.
+  
+  Template Variables (server-side):
+  - studentName: Name of the student
+  - datetime: Formatted date and time of the meeting
+  - notes: Meeting notes content
+  
+  Design: Modern, clean design with subtle branding
+-->
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      /* Reset styles for email compatibility */
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background-color: #f9fafb;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* Full-width wrapper */
+      .email-wrapper {
+        width: 100%;
+        background-color: #f9fafb;
+        padding: 40px 20px;
+      }
+
+      /* Container styles */
+      .email-container {
+        max-width: 600px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+      }
+
+      /* Header */
+      .email-header {
+        padding: 32px 40px 24px 40px;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .logo {
+        font-size: 20px;
+        font-weight: 700;
+        color: #111827;
+        margin: 0;
+        letter-spacing: -0.3px;
+      }
+
+      .logo-subtitle {
+        font-size: 13px;
+        color: #6b7280;
+        margin: 4px 0 0 0;
+        font-weight: 400;
+      }
+
+      /* Content area */
+      .email-content {
+        padding: 32px 40px 40px 40px;
+      }
+
+      .greeting {
+        font-size: 16px;
+        color: #111827;
+        margin: 0 0 16px 0;
+        font-weight: 500;
+      }
+
+      .intro-text {
+        font-size: 15px;
+        color: #4b5563;
+        line-height: 1.6;
+        margin: 0 0 28px 0;
+      }
+
+      /* Meeting info card */
+      .meeting-card {
+        background: #f9fafb;
+        border-radius: 8px;
+        padding: 24px;
+        margin: 0 0 28px 0;
+        border: 1px solid #e5e7eb;
+      }
+
+      .meeting-datetime {
+        font-size: 13px;
+        color: #111827;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        margin: 0 0 20px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .datetime-icon {
+        width: 16px;
+        height: 16px;
+        opacity: 0.7;
+      }
+
+      .notes-label {
+        font-size: 11px;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+        margin: 0 0 10px 0;
+      }
+
+      .meeting-notes {
+        font-size: 15px;
+        color: #374151;
+        line-height: 1.7;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        background: #ffffff;
+        padding: 16px;
+        border-radius: 6px;
+        border: 1px solid #e5e7eb;
+        margin: 0;
+      }
+
+      /* Closing message */
+      .closing {
+        font-size: 15px;
+        color: #4b5563;
+        line-height: 1.6;
+        margin: 0 0 24px 0;
+      }
+
+      .signature {
+        font-size: 15px;
+        color: #111827;
+        font-weight: 500;
+        margin: 0;
+      }
+
+      .signature-org {
+        font-size: 14px;
+        color: #6b7280;
+        margin: 2px 0 0 0;
+      }
+
+      /* Footer */
+      .email-footer {
+        background-color: #f9fafb;
+        padding: 20px 40px;
+        border-top: 1px solid #e5e7eb;
+      }
+
+      .email-footer p {
+        margin: 0;
+        font-size: 12px;
+        color: #9ca3af;
+        line-height: 1.5;
+        text-align: center;
+      }
+
+      /* Responsive design */
+      @media only screen and (max-width: 600px) {
+        .email-wrapper {
+          padding: 20px 16px;
+        }
+
+        .email-header {
+          padding: 24px 24px 20px 24px;
+        }
+
+        .email-content {
+          padding: 24px 24px 32px 24px;
+        }
+
+        .meeting-card {
+          padding: 20px;
+        }
+
+        .email-footer {
+          padding: 16px 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-wrapper">
+      <div class="email-container">
+        <!-- Header -->
+        <div class="email-header">
+          <p class="logo">Summit</p>
+          <p class="logo-subtitle">Meeting Notes</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="email-content">
+          <p class="greeting">Hi <?= studentName ?>,</p>
+
+          <p class="intro-text">
+            Thank you for meeting with us. Here's a summary of what we discussed for your reference.
+          </p>
+
+          <!-- Meeting Details Card -->
+          <div class="meeting-card">
+            <div class="meeting-datetime">
+              <svg class="datetime-icon" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M4 0a1 1 0 0 0-1 1v1H2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-1V1a1 1 0 0 0-2 0v1H5V1a1 1 0 0 0-1-1zm0 5a1 1 0 0 0 0 2h8a1 1 0 0 0 0-2H4z"/>
+              </svg>
+              <?= datetime ?>
+            </div>
+
+            <p class="notes-label">Notes</p>
+            <div class="meeting-notes"><?= notes ?></div>
+          </div>
+
+          <p class="closing">
+            Questions about anything we discussed? Feel free to reach out.
+          </p>
+
+          <p class="signature">Thank you,</p>
+          <p class="signature-org">Summit Team</p>
+        </div>
+
+        <!-- Footer -->
+        <div class="email-footer">
+          <p>
+            This is an automated message from Summit.<br />
+            Please do not reply directly to this email.
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+</document_content>
