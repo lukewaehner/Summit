@@ -3,10 +3,7 @@
 <head>
   <base target="_top">
   <style>
-    * {
-      box-sizing: border-box;
-    }
-    
+    * { box-sizing: border-box; }
     body {
       font-family: 'Google Sans', Roboto, Arial, sans-serif;
       margin: 0;
@@ -14,87 +11,61 @@
       background: #fff;
       color: #202124;
     }
-    
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+      color: #1a73e8;
+      cursor: pointer;
+      margin-bottom: 12px;
+      padding: 4px 0;
+    }
+    .back-btn:hover {
+      text-decoration: underline;
+    }
     h2 {
       font-size: 18px;
       font-weight: 500;
-      margin: 0 0 16px 0;
-      color: #202124;
+      margin: 0 0 4px 0;
     }
-    
-    .loading {
-      text-align: center;
-      padding: 40px 0;
+    .student-name {
+      font-size: 14px;
       color: #5f6368;
+      margin-bottom: 16px;
     }
-    
-    .spinner {
-      width: 24px;
-      height: 24px;
-      border: 3px solid #e8eaed;
-      border-top-color: #1a73e8;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 12px;
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    
-    .error {
-      background: #fce8e6;
-      color: #c5221f;
-      padding: 12px;
-      border-radius: 4px;
-      font-size: 13px;
-    }
-    
-    .student-list {
+    .meeting-list {
       list-style: none;
       padding: 0;
       margin: 0;
     }
-    
-    .student-item {
+    .meeting-item {
       padding: 12px;
-      border-bottom: 1px solid #e8eaed;
-      transition: background 0.15s;
+      border: 1px solid #e8eaed;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      background: #fafafa;
     }
-    
-    .student-item:hover {
-      background: #f8f9fa;
+    .meeting-header {
+      margin-bottom: 8px;
     }
-    
-    .student-item:last-child {
-      border-bottom: none;
-    }
-    
-    .student-name {
+    .meeting-datetime {
       font-size: 14px;
       font-weight: 500;
       color: #202124;
-      margin-bottom: 4px;
     }
-    
-    .student-link {
+    .meeting-notes {
       font-size: 13px;
-      color: #1a73e8;
-      text-decoration: none;
-      word-break: break-all;
+      color: #3c4043;
+      line-height: 1.5;
+      white-space: pre-wrap;
     }
-    
-    .student-link:hover {
-      text-decoration: underline;
-    }
-    
     .empty-state {
       text-align: center;
       padding: 40px 0;
       color: #5f6368;
       font-size: 14px;
     }
-    
     .count {
       font-size: 12px;
       color: #5f6368;
@@ -103,66 +74,56 @@
   </style>
 </head>
 <body>
-  <h2>Students</h2>
+  <div class="back-btn" onclick="goBack()">← Back to Students</div>
+  <h2>Meetings</h2>
+  <div class="student-name"><?= data.studentName ?></div>
+  
   <div id="content">
-    <div class="loading">
-      <div class="spinner"></div>
-      <div>Loading students...</div>
-    </div>
+    <? if (data.meetings && data.meetings.length > 0) { ?>
+      <div class="count"><?= data.meetings.length ?> meeting<?= data.meetings.length !== 1 ? 's' : '' ?></div>
+      <ul class="meeting-list">
+        <? 
+        var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        data.meetings.forEach(function(meeting) { 
+          var displayStr = '';
+          
+          // Format date portion
+          if (meeting.date instanceof Date) {
+            var mon = months[meeting.date.getMonth()];
+            var dd = meeting.date.getDate();
+            var yyyy = meeting.date.getFullYear();
+            displayStr = mon + ' ' + dd + ', ' + yyyy;
+          } else {
+            displayStr = String(meeting.date);
+          }
+          
+          // Format time portion (use UTC to avoid timezone shift)
+          if (meeting.time instanceof Date) {
+            var hours = meeting.time.getUTCHours();
+            var minutes = meeting.time.getUTCMinutes();
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            displayStr += ' (' + hours + ':' + minutes + ')';
+          } else if (meeting.time) {
+            displayStr += ' (' + meeting.time + ')';
+          }
+        ?>
+          <li class="meeting-item">
+            <div class="meeting-header">
+              <span class="meeting-datetime"><?= displayStr ?></span>
+            </div>
+            <div class="meeting-notes"><?= meeting.notes ?></div>
+          </li>
+        <? }); ?>
+      </ul>
+    <? } else { ?>
+      <div class="empty-state">No meetings found for this student.</div>
+    <? } ?>
   </div>
 
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      loadStudentData();
-    });
-
-    function loadStudentData() {
-      console.log('Loading student data from server...');
-      google.script.run
-        .withSuccessHandler(displayStudents)
-        .withFailureHandler(displayError)
-        .getStudentData();
-      console.log(`Result has returned.`)
-    }
-
-    function displayStudents(students) {
-      console.log('Displaying student data:', students);
-      console.log(`Number of students received: ${students.length}`);
-      console.log(`First student (if any): ${students.length > 0 ? JSON.stringify(students[0]) : 'N/A'}`);
-
-      var content = document.getElementById('content');
-      
-      if (!students || students.length === 0) {
-        content.innerHTML = '<div class="empty-state">No students found.</div>';
-        return;
-      }
-
-      var html = '<div class="count">' + students.length + ' student' + (students.length !== 1 ? 's' : '') + '</div>';
-      html += '<ul class="student-list">';
-      
-      students.forEach(function(student) {
-        html += '<li class="student-item">';
-        html += '<div class="student-name">' + escapeHtml(student.name) + '</div>';
-        if (student.url) {
-          html += '<a class="student-link" href="' + escapeHtml(student.url) + '" target="_blank">' + escapeHtml(student.url) + '</a>';
-        }
-        html += '</li>';
-      });
-      
-      html += '</ul>';
-      content.innerHTML = html;
-    }
-
-    function displayError(error) {
-      var content = document.getElementById('content');
-      content.innerHTML = '<div class="error">Error loading data: ' + escapeHtml(error.message || 'Unknown error') + '</div>';
-    }
-
-    function escapeHtml(text) {
-      if (!text) return '';
-      var div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
+    function goBack() {
+      google.script.run.openSidebar();
     }
   </script>
 </body>

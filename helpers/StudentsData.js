@@ -35,4 +35,12 @@ function getStudentMeetings(url) {
 
   const values = studentSheet.getRange(3, 3, lastRow - 1, 3).getValues();
 
+  // Return meetings with date, time, notes present
+  return values
+    .filter(([date, time, notes]) => date && time && notes)
+    .map(([date, time, notes]) => ({
+      date: String(date).trim(),
+      time: String(time).trim(),
+      notes: String(notes).trim(),
+    }));
 }
