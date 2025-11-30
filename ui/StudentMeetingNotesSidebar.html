@@ -3,7 +3,9 @@
   <head>
     <base target="_top" />
     <style>
-      * { box-sizing: border-box; }
+      * {
+        box-sizing: border-box;
+      }
       body {
         font-family: "Google Sans", Roboto, Arial, sans-serif;
         margin: 0;
@@ -21,7 +23,9 @@
         margin-bottom: 12px;
         padding: 4px 0;
       }
-      .back-btn:hover { text-decoration: underline; }
+      .back-btn:hover {
+        text-decoration: underline;
+      }
       h2 {
         font-size: 18px;
         font-weight: 500;
@@ -44,7 +48,9 @@
         margin-bottom: 12px;
         background: #fafafa;
       }
-      .meeting-header { margin-bottom: 8px; }
+      .meeting-header {
+        margin-bottom: 8px;
+      }
       .meeting-datetime {
         font-size: 14px;
         font-weight: 500;
@@ -71,7 +77,9 @@
         align-items: center;
         gap: 6px;
       }
-      .send-email-btn:hover { background: #1557b0; }
+      .send-email-btn:hover {
+        background: #1557b0;
+      }
       .send-email-btn:disabled {
         background: #dadce0;
         cursor: not-allowed;
@@ -117,60 +125,35 @@
     <div class="student-name"><?= data.studentName ?></div>
 
     <div id="content">
-      <? if (data.meetings && data.meetings.length > 0) { ?>
-        <div class="count">
-          <?= data.meetings.length ?> meeting<?= data.meetings.length !== 1 ? 's' : '' ?>
-        </div>
-        <ul class="meeting-list">
-          <? 
-          var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          
-          for (var i = 0; i < data.meetings.length; i++) {
-            var meeting = data.meetings[i];
-            var displayStr = '';
-            
-            // Format date
-            if (meeting.date instanceof Date) {
-              var mon = months[meeting.date.getMonth()];
-              var dd = meeting.date.getDate();
-              var yyyy = meeting.date.getFullYear();
-              displayStr = mon + ' ' + dd + ', ' + yyyy;
-            } else {
-              displayStr = String(meeting.date);
-            }
-            
-            // Format time
-            if (meeting.time instanceof Date) {
-              var hours = meeting.time.getHours();
-              var minutes = meeting.time.getMinutes();
-              var ampm = hours >= 12 ? 'PM' : 'AM';
-              hours = hours % 12;
-              hours = hours ? hours : 12;
-              minutes = minutes < 10 ? '0' + minutes : minutes;
-              displayStr += ' (' + hours + ':' + minutes + ' ' + ampm + ')';
-            } else if (meeting.time) {
-              displayStr += ' (' + meeting.time + ')';
-            }
-          ?>
-          <li class="meeting-item" data-meeting-index="<?= i ?>">
-            <div class="meeting-header">
-              <span class="meeting-datetime"><?= displayStr ?></span>
-            </div>
-            <div class="meeting-notes"><?= meeting.notes ?></div>
-            <button
-              class="send-email-btn"
-              data-meeting-index="<?= i ?>"
-              onclick="sendMeetingEmail(<?= i ?>)"
-            >
-              Send Email
-            </button>
-            <div class="success-message" id="success-<?= i ?>"></div>
-            <div class="error-message" id="error-<?= i ?>"></div>
-          </li>
-          <? } ?>
-        </ul>
+      <? if (data.meetings && data.meetings.length >
+      0) { ?>
+      <div class="count">
+        <?= data.meetings.length ?>
+        meeting<?= data.meetings.length !== 1 ? 's' : '' ?>
+      </div>
+      <ul class="meeting-list">
+        <? for (var i = 0; i < data.meetings.length; i++) { 
+             var meeting = data.meetings[i];
+           ?>
+        <li class="meeting-item" data-meeting-index="<?= i ?>">
+          <div class="meeting-header">
+            <span class="meeting-datetime"><?= meeting.datetime ?></span>
+          </div>
+          <div class="meeting-notes"><?= meeting.notes ?></div>
+          <button
+            class="send-email-btn"
+            data-meeting-index="<?= i ?>"
+            onclick="sendMeetingEmail(<?= i ?>)"
+          >
+            Send Email
+          </button>
+          <div class="success-message" id="success-<?= i ?>"></div>
+          <div class="error-message" id="error-<?= i ?>"></div>
+        </li>
+        <? } ?>
+      </ul>
       <? } else { ?>
-        <div class="empty-state">No meetings found for this student.</div>
+      <div class="empty-state">No meetings found for this student.</div>
       <? } ?>
     </div>
 
@@ -213,7 +196,8 @@
           button.textContent = "Sending...";
         }
 
-        var datetime = formatDateTime(meeting.date, meeting.time);
+          // Use pre-formatted datetime string from server
+          var datetime = meeting.datetime;
 
         google.script.run
           .withSuccessHandler(function (result) {
@@ -237,53 +221,14 @@
           .sendMeetingNotesEmail(studentName, datetime, meeting.notes, email);
       }
 
-      function formatDateTime(date, time) {
-        var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        var dateStr = "";
-
-        var dateObj;
-        if (date instanceof Date) {
-          dateObj = date;
-        } else if (typeof date === "string") {
-          dateObj = new Date(date);
-        }
-
-        if (dateObj && !isNaN(dateObj.getTime())) {
-          var monthName = months[dateObj.getMonth()];
-          var dayNum = dateObj.getDate();
-          var year = dateObj.getFullYear();
-          dateStr = monthName + " " + dayNum + ", " + year;
-        } else {
-          dateStr = String(date);
-        }
-
-        var timeStr = "";
-        if (time) {
-          var timeObj;
-          if (time instanceof Date) {
-            timeObj = time;
-          } else if (typeof time === "string") {
-            timeObj = new Date(time);
-          }
-
-          if (timeObj && !isNaN(timeObj.getTime())) {
-            var hours = timeObj.getHours();
-            var minutes = timeObj.getMinutes();
-            var ampm = hours >= 12 ? "PM" : "AM";
-            hours = hours % 12;
-            hours = hours ? hours : 12;
-            minutes = minutes < 10 ? "0" + minutes : minutes;
-            timeStr = " (" + hours + ":" + minutes + " " + ampm + ")";
-          } else if (typeof time === "string" && time.trim()) {
-            var cleanTime = time.trim();
-            if (!cleanTime.includes("GMT") && !cleanTime.includes("1899")) {
-              timeStr = " (" + cleanTime + ")";
-            }
-          }
-        }
-
-        return dateStr + timeStr;
-      }
+       function formatDateTime(date, time) {
+         // No longer needed - dates are pre-formatted on server
+         // Keep function for backward compatibility, just combine if needed
+         if (date && time) {
+           return date + " (" + time + ")";
+         }
+         return date || "";
+       }
 
       function showSuccess(meetingIndex, message) {
         var successEl = document.getElementById('success-' + meetingIndex);

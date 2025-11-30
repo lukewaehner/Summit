@@ -153,21 +153,6 @@
         margin: 2px 0 0 0;
       }
 
-      /* Footer */
-      .email-footer {
-        background-color: #f9fafb;
-        padding: 20px 40px;
-        border-top: 1px solid #e5e7eb;
-      }
-
-      .email-footer p {
-        margin: 0;
-        font-size: 12px;
-        color: #9ca3af;
-        line-height: 1.5;
-        text-align: center;
-      }
-
       /* Responsive design */
       @media only screen and (max-width: 600px) {
         .email-wrapper {
@@ -184,10 +169,6 @@
 
         .meeting-card {
           padding: 20px;
-        }
-
-        .email-footer {
-          padding: 16px 24px;
         }
       }
     </style>
@@ -206,7 +187,7 @@
           <p class="greeting">Hi <?= studentName ?>,</p>
 
           <p class="intro-text">
-            Thank you for meeting with us. Here's a summary of what we discussed for your reference.
+            Thanks for meeting today! Here is a recap of the topics and progress:
           </p>
 
           <!-- Meeting Details Card -->
@@ -215,27 +196,19 @@
               <svg class="datetime-icon" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M4 0a1 1 0 0 0-1 1v1H2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-1V1a1 1 0 0 0-2 0v1H5V1a1 1 0 0 0-1-1zm0 5a1 1 0 0 0 0 2h8a1 1 0 0 0 0-2H4z"/>
               </svg>
-              <?= datetime ?>
+             Notes from <?= datetime ?>
             </div>
 
-            <p class="notes-label">Notes</p>
+            <p class="notes-label"></p>
             <div class="meeting-notes"><?= notes ?></div>
           </div>
 
           <p class="closing">
-            Questions about anything we discussed? Feel free to reach out.
+            You're welcome to reply directly to this email with any follow-up questions!
           </p>
 
           <p class="signature">Thank you,</p>
           <p class="signature-org">Summit Team</p>
-        </div>
-
-        <!-- Footer -->
-        <div class="email-footer">
-          <p>
-            This is an automated message from Summit.<br />
-            Please do not reply directly to this email.
-          </p>
         </div>
       </div>
     </div>

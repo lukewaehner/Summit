@@ -14,6 +14,11 @@ const spreadsheetHelperFunctions = {
     }
   },
 
+  /**
+   * Opens a spreadsheet by ID with error handling.
+   * @param {string} id 
+   * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet | null}
+   */
   openSpreadsheetWithId(id) {
     try {
       return SpreadsheetApp.openById(id);

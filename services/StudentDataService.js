@@ -30,7 +30,7 @@ const StudentDataService = {
     if (!studentDataSheet) {
       throw new Error(
         "Student Data sheet not found: " +
-          CONFIG.sheets.broadcastSheet.subSheets.studentData
+        CONFIG.sheets.broadcastSheet.subSheets.studentData
       );
     }
 
@@ -92,14 +92,27 @@ const StudentDataService = {
     const values = studentSheet.getRange(3, 3, lastRow - 2, 3).getValues();
 
     // Month names for formatting
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
 
     // Filter out empty rows and format dates/times into strings
     return values
       .filter(([date, time, notes]) => date && time && notes)
       .map(([date, time, notes]) => {
         // Format date as "Nov 24, 2025"
-        let formattedDate = '';
+        let formattedDate = "";
         if (date instanceof Date) {
           const mon = months[date.getMonth()];
           const day = date.getDate();
@@ -110,15 +123,23 @@ const StudentDataService = {
         }
 
         // Format time as "9:00 AM"
-        let formattedTime = '';
+        let formattedTime = "";
         if (time instanceof Date) {
-          let hours = time.getHours();
+          // Use hours and subtract 1 to correct timezone offset
+          // Google Sheets stores times with timezone that needs adjustment
+          let hours = time.getHours() - 1;
           let minutes = time.getMinutes();
-          const ampm = hours >= 12 ? 'PM' : 'AM';
+
+          // Handle negative hours (wrap to previous day)
+          if (hours < 0) {
+            hours = 23;
+          }
+
+          const ampm = hours >= 12 ? "PM" : "AM";
           hours = hours % 12;
           hours = hours ? hours : 12; // Convert 0 to 12
-          minutes = minutes < 10 ? '0' + minutes : minutes;
-          formattedTime = `${hours}:${minutes} ${ampm}`;
+          const minutesStr = minutes < 10 ? "0" + minutes : String(minutes);
+          formattedTime = `${hours}:${minutesStr} ${ampm}`;
         } else {
           formattedTime = String(time).trim();
         }
@@ -173,7 +194,7 @@ const StudentDataService = {
 
     const studentMasterSheets = [maggieSheet, jackieSheet];
 
-    /** @type {Array<[string, string, string]>} Array of [name, url, email] triplets to write */
+    /** @type {Array<[string, string, string, string]>} Array of [name, url, email, advisor] quad to write */
     const rowsToWrite = [];
 
     // Iterate through each advisor's sheet to extract student data
@@ -231,11 +252,15 @@ const StudentDataService = {
           // Continue with empty email rather than failing entire sync
         }
 
+        // Render jackie / maggie
+        const advisorTag = sheet === maggieSheet ? "Maggie" : "Jackie";
+
         // Add [name, url, email] triplet to write list
         rowsToWrite.push([
           String(studentName || ""),
           String(studentUrl || ""),
           studentEmail,
+          advisorTag
         ]);
       }
     }
@@ -248,7 +273,7 @@ const StudentDataService = {
     // This ensures we start with a clean slate
     const existingLastRow = dataSheet.getLastRow();
     if (existingLastRow > 1) {
-      dataSheet.getRange(2, 1, existingLastRow - 1, 3).clearContent();
+      dataSheet.getRange(2, 1, existingLastRow - 1, 4).clearContent();
     }
 
     // Early exit if no students were found
@@ -258,7 +283,7 @@ const StudentDataService = {
 
     // Write consolidated student data: Column A = name, Column B = URL, Column C = email
     // Starting at row 2 (row 1 is headers)
-    dataSheet.getRange(2, 1, rowsToWrite.length, 3).setValues(rowsToWrite);
+    dataSheet.getRange(2, 1, rowsToWrite.length, 4).setValues(rowsToWrite);
 
     if (CONFIG.debugMode) {
       Logger.log(
