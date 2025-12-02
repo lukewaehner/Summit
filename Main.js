@@ -47,24 +47,61 @@ function updateStudentDataSpreadhseet() {
 /**
  * Wrapper function that delegates to StudentDataService.getStudentData().
  * This function is called by the UI sidebar to fetch all students.
+ * Uses caching to improve performance.
  *
  * @returns {Array<{name: string, url: string}>} Array of student objects
  * @see {@link StudentDataService.getStudentData}
  */
 function getStudentData() {
-  return StudentDataService.getStudentData();
+  // Try cache first
+  const cached = SummitCacheService.getCachedStudentList();
+  if (cached) {
+    if (CONFIG.debugMode) {
+      Logger.log("Returning cached student list");
+    }
+    return cached;
+  }
+
+  // Cache miss - fetch from sheet
+  const students = StudentDataService.getStudentData();
+
+  // Cache for next time
+  SummitCacheService.cacheStudentList(students);
+
+  return students;
 }
 
 /**
  * Wrapper function that delegates to StudentDataService.getStudentMeetings().
  * This function is called by the UI sidebar to fetch meetings for a specific student.
+ * Uses caching and limits results to improve performance.
  *
  * @param {string} url - The full URL to the student's spreadsheet
+ * @param {number} limit - Optional limit on number of meetings to return (default: 50)
  * @returns {Array<{date: string, time: string, notes: string}>} Array of meeting objects
  * @see {@link StudentDataService.getStudentMeetings}
  */
-function getStudentMeetings(url) {
-  return StudentDataService.getStudentMeetings(url);
+function getStudentMeetings(url, limit) {
+  // Try cache first
+  const cacheKey = url + (limit || "");
+  const cached = SummitCacheService.getCachedMeetings(cacheKey);
+  if (cached) {
+    if (CONFIG.debugMode) {
+      Logger.log("Returning cached meetings");
+    }
+    return cached;
+  }
+
+  // Cache miss - fetch from spreadsheet
+  const allMeetings = StudentDataService.getStudentMeetings(url);
+
+  // Limit results (most recent first)
+  const limitedMeetings = limit ? allMeetings.slice(0, limit) : allMeetings;
+
+  // Cache for next time
+  SummitCacheService.cacheMeetings(cacheKey, limitedMeetings);
+
+  return limitedMeetings;
 }
 
 /**

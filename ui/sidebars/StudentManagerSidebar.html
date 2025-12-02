@@ -204,6 +204,7 @@
       /**
        * Opens the meetings view for a selected student.
        * Shows loading state, fetches meetings from server, then opens meeting sidebar.
+       * Only loads the 50 most recent meetings for faster performance.
        *
        * @param {Object} student - Student object with name, url, and email
        * @param {string} student.name - Student's name
@@ -217,6 +218,7 @@
           '<div class="loading"><div class="spinner"></div><div>Loading meetings...</div></div>';
 
         // Fetch meetings for this student from their spreadsheet
+        // Limit to 50 most recent meetings for faster loading (5 minutes limit = 300000ms)
         google.script.run
           .withSuccessHandler(function (meetings) {
             // Open the meeting notes sidebar with student name, email, and meetings data
@@ -227,7 +229,7 @@
             });
           })
           .withFailureHandler(displayError)
-          .getStudentMeetings(student.url);
+          .getStudentMeetings(student.url, 50); // Limit to 50 recent meetings
       }
 
       /**
