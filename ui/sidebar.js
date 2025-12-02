@@ -46,7 +46,7 @@ function openSidebar() {
  */
 function openStudentMeetingSidebar(data) {
   var template = HtmlService.createTemplateFromFile(
-    "ui/StudentMeetingNotesSidebar"
+    "ui/sidebars/StudentMeetingNotesSidebar"
   );
 
   // Pass student name, email, and meetings array to template
@@ -69,7 +69,7 @@ function openStudentMeetingSidebar(data) {
  */
 function getStudentManagerSidebarHtml() {
   return HtmlService.createHtmlOutputFromFile(
-    "ui/StudentManagerSidebar"
+    "ui/sidebars/StudentManagerSidebar"
   ).setTitle("Summit Sidebar");
 }
 
@@ -93,7 +93,7 @@ function getStudentManagerSidebarHtml() {
  */
 function getStudentMeetingSidebarHtml(meetings) {
   var template = HtmlService.createTemplateFromFile(
-    "ui/StudentMeetingNotesSidebar"
+    "ui/sidebars/StudentMeetingNotesSidebar"
   );
 
   // Pass meetings data to template for server-side rendering
