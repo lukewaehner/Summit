@@ -24,6 +24,8 @@ module.exports = [
         // Services
         MeetingDataService: "writable",
         StudentDataService: "writable",
+        EmailService: "writable",
+        ReviewNotificationService: "writable",
         // Helpers
         meetingHelpers: "writable",
         // Orchestrators & Entry Points
@@ -46,6 +48,11 @@ module.exports = [
         getStudentDataCheck: "writable",
         // Email Functions
         sendMeetingNotesEmail: "writable",
+        // Review Notification Functions
+        collectReviewRequests: "writable",
+        processReviewRequests: "writable",
+        markReviewAsCompleted: "writable",
+        setupReviewQueue: "writable",
       },
     },
     rules: {
@@ -55,7 +62,7 @@ module.exports = [
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern:
-            "^(CONFIG|Meeting|meetingHelpers|MeetingDataService|StudentDataService|loadMeetings|sendMeetingNotes|syncAllData|updateStudentDataSpreadhseet|grabAllMeetings|trackMeetingsToStudents|buildMeetingRowsForStudent|getMeetingTimestamp|spreadsheetHelperFunctions|getStudentData|getStudentMeetings|openSidebar|openStudentMeetingSidebar|getStudentManagerSidebarHtml|getStudentMeetingSidebarHtml|startMenu|getStudentDataCheck|sendMeetingNotesEmail)$",
+            "^(CONFIG|Meeting|meetingHelpers|MeetingDataService|StudentDataService|EmailService|ReviewNotificationService|loadMeetings|sendMeetingNotes|syncAllData|updateStudentDataSpreadhseet|grabAllMeetings|trackMeetingsToStudents|buildMeetingRowsForStudent|getMeetingTimestamp|spreadsheetHelperFunctions|getStudentData|getStudentMeetings|openSidebar|openStudentMeetingSidebar|getStudentManagerSidebarHtml|getStudentMeetingSidebarHtml|startMenu|getStudentDataCheck|sendMeetingNotesEmail|collectReviewRequests|processReviewRequests|markReviewAsCompleted|setupReviewQueue)$",
         },
       ],
       // Allow redeclaration for Apps Script backwards compatibility

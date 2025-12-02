@@ -69,13 +69,15 @@ function getStudentMeetings(url) {
 
 /**
  * Sends meeting notes email to a student.
- * Creates a beautifully formatted HTML email using the EmailTemplate.
+ * Wrapper function that delegates to EmailService.sendMeetingNotes().
+ * This function is called by the UI sidebar when sending emails.
  *
  * @param {string} studentName - Name of the student
  * @param {string} datetime - Formatted date and time of the meeting
  * @param {string} notes - Meeting notes content
  * @param {string} recipientEmail - Student's email address
  * @returns {Object} Result object with success status and message
+ * @see {@link EmailService.sendMeetingNotes}
  *
  * @example
  * sendMeetingNotesEmail(
@@ -86,54 +88,12 @@ function getStudentMeetings(url) {
  * );
  */
 function sendMeetingNotesEmail(studentName, datetime, notes, recipientEmail) {
-  try {
-    // Validate inputs
-    if (!recipientEmail || !recipientEmail.includes("@")) {
-      throw new Error("Invalid email address");
-    }
-
-    if (!studentName || !datetime || !notes) {
-      throw new Error(
-        "Missing required fields: studentName, datetime, or notes"
-      );
-    }
-
-    // Create HTML email from template
-    var template = HtmlService.createTemplateFromFile("ui/EmailTemplate");
-    template.studentName = studentName;
-    template.datetime = datetime;
-    template.notes = notes;
-
-    // Evaluate template to get HTML content
-    var htmlBody = template.evaluate().getContent();
-
-    // Email subject line
-    var subject = "Summit Meeting Notes - " + datetime;
-
-    // Send email with HTML body
-    // Using MailApp for compatibility, but GmailApp could also be used
-    MailApp.sendEmail({
-      to: recipientEmail,
-      subject: subject,
-      htmlBody: htmlBody,
-      name: "Summit CRM",
-    });
-
-    if (CONFIG.debugMode) {
-      Logger.log("Email sent successfully to: " + recipientEmail);
-    }
-
-    return {
-      success: true,
-      message: "Email sent successfully to " + recipientEmail,
-    };
-  } catch (error) {
-    Logger.log("Error sending email: " + error.toString());
-    return {
-      success: false,
-      message: "Failed to send email: " + error.message,
-    };
-  }
+  return EmailService.sendMeetingNotes(
+    studentName,
+    datetime,
+    notes,
+    recipientEmail
+  );
 }
 
 /**
@@ -147,4 +107,55 @@ function getStudentDataCheck() {
     Logger.log(students[i].name);
     Logger.log(students[i].url);
   }
+}
+
+/**
+ * Collects review requests from all student spreadsheets.
+ * Phase 1: Data Collection - Scans student sheets and writes to central queue.
+ * Wrapper function that delegates to ReviewNotificationService.collectReviewRequests().
+ * This should be called by a time-based trigger (every hour).
+ *
+ * @returns {Object} Collection results
+ * @see {@link ReviewNotificationService.collectReviewRequests}
+ */
+function collectReviewRequests() {
+  return ReviewNotificationService.collectReviewRequests();
+}
+
+/**
+ * Processes pending review requests and notifies advisors.
+ * Phase 2: Notification - Reads central queue and sends batch emails (fast).
+ * Wrapper function that delegates to ReviewNotificationService.processReviewRequests().
+ * This should be called by a time-based trigger (every 10 minutes).
+ *
+ * @returns {Object} Processing results
+ * @see {@link ReviewNotificationService.processReviewRequests}
+ */
+function processReviewRequests() {
+  return ReviewNotificationService.processReviewRequests();
+}
+
+/**
+ * Marks a student's review request as completed.
+ * Wrapper function that delegates to ReviewNotificationService.markAsCompleted().
+ *
+ * @param {string} studentName - Name of the student
+ * @returns {Object} Result object
+ * @see {@link ReviewNotificationService.markAsCompleted}
+ */
+
+function markReviewAsCompleted(studentName) {
+  return ReviewNotificationService.markAsCompleted(studentName);
+}
+
+/**
+ * Sets up the ReviewQueue sheet with proper headers.
+ * Run this once during initial setup.
+ *
+ * @returns {Object} Result object
+ * @see {@link ReviewNotificationService.setupReviewQueue}
+ */
+
+function setupReviewQueue() {
+  return ReviewNotificationService.setupReviewQueue();
 }

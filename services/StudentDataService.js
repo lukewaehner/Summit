@@ -6,15 +6,15 @@
 
 const StudentDataService = {
   /**
-   * Fetches all student data (name, URL, and email) from the Student Data sheet.
+   * Fetches all student data (name, URL, email, and advisor) from the Student Data sheet.
    * This reads from the broadcast spreadsheet's Student Data tab.
    *
-   * @returns {Array<{name: string, url: string, email: string}>} Array of student objects with name, spreadsheet URL, and email
+   * @returns {Array<{name: string, url: string, email: string, advisor: string}>} Array of student objects with name, spreadsheet URL, email, and advisor
    * @throws {Error} If broadcast spreadsheet or Student Data sheet cannot be opened
    *
    * @example
    * const students = StudentDataService.getAllStudents();
-   * // Returns: [{ name: "John Doe", url: "https://docs.google.com/...", email: "john@example.com" }, ...]
+   * // Returns: [{ name: "John Doe", url: "https://docs.google.com/...", email: "john@example.com", advisor: "Maggie" }, ...]
    */
   getAllStudents() {
     const broadcastSs = spreadsheetHelperFunctions.openSpreadsheetWithId(
@@ -30,7 +30,7 @@ const StudentDataService = {
     if (!studentDataSheet) {
       throw new Error(
         "Student Data sheet not found: " +
-        CONFIG.sheets.broadcastSheet.subSheets.studentData
+          CONFIG.sheets.broadcastSheet.subSheets.studentData
       );
     }
 
@@ -39,16 +39,17 @@ const StudentDataService = {
       return [];
     }
 
-    // Read name (A), URL (B), and email (C) from Student Data sheet
+    // Read name (A), URL (B), email (C), and advisor (D) from Student Data sheet
     const studentRows = studentDataSheet
-      .getRange(2, 1, lastRow - 1, 3) // A2:C(lastRow)
+      .getRange(2, 1, lastRow - 1, 4) // A2:D(lastRow)
       .getValues();
 
     return studentRows
-      .map(([name, url, email]) => ({
+      .map(([name, url, email, advisor]) => ({
         name: String(name || "").trim(),
         url: String(url || "").trim(),
         email: String(email || "").trim(),
+        advisor: String(advisor || "").trim(),
       }))
       .filter((student) => student.name && student.url);
   },
@@ -57,7 +58,7 @@ const StudentDataService = {
    * Alias for getAllStudents() to maintain backward compatibility.
    * Used by UI components that call getStudentData().
    *
-   * @returns {Array<{name: string, url: string, email: string}>} Array of student objects with email
+   * @returns {Array<{name: string, url: string, email: string, advisor: string}>} Array of student objects with email and advisor
    * @see {@link getAllStudents}
    */
   getStudentData() {
@@ -260,7 +261,7 @@ const StudentDataService = {
           String(studentName || ""),
           String(studentUrl || ""),
           studentEmail,
-          advisorTag
+          advisorTag,
         ]);
       }
     }
