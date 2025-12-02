@@ -119,7 +119,7 @@ function getStudentDataCheck() {
  * @see {@link ReviewNotificationService.collectReviewRequests}
  */
 function collectReviewRequests() {
-  return ReviewNotificationService.collectReviewRequests();
+  return ReviewNotificationService.collectReviewRequests(null);
 }
 
 /**

@@ -160,8 +160,7 @@ const ReviewNotificationService = {
 
           if (CONFIG.debugMode) {
             Logger.log(
-              `Opened spreadsheet for ${
-                student.name
+              `Opened spreadsheet for ${student.name
               }: ${studentSs.getName()} (ID: ${studentSs.getId()})`
             );
           }
@@ -175,8 +174,7 @@ const ReviewNotificationService = {
           for (const sheetConfig of this.STUDENT_SHEET_CONFIGS) {
             if (CONFIG.debugMode) {
               Logger.log(
-                `Looking for sheet: "${
-                  sheetConfig.sheetName
+                `Looking for sheet: "${sheetConfig.sheetName
                 }" in ${studentSs.getName()}`
               );
             }
@@ -267,8 +265,7 @@ const ReviewNotificationService = {
                 if (consecutiveEmptyRows >= MAX_CONSECUTIVE_EMPTY) {
                   if (CONFIG.debugMode) {
                     Logger.log(
-                      `  Stopping early at row ${
-                        sheetConfig.startRow + rowIdx
+                      `  Stopping early at row ${sheetConfig.startRow + rowIdx
                       } after ${MAX_CONSECUTIVE_EMPTY} consecutive empty rows`
                     );
                   }
@@ -283,7 +280,7 @@ const ReviewNotificationService = {
               if (
                 status &&
                 status.toString().trim().toLowerCase() ===
-                  sheetConfig.needsReviewValue
+                sheetConfig.needsReviewValue
               ) {
                 needsReviewCount++;
                 if (!firstNeedsReviewRow && title) {
@@ -299,8 +296,7 @@ const ReviewNotificationService = {
               // Only log first 5 rows to avoid spam
               if (CONFIG.debugMode && rowIdx < 5) {
                 Logger.log(
-                  `    Row ${
-                    sheetConfig.startRow + rowIdx
+                  `    Row ${sheetConfig.startRow + rowIdx
                   }: Status="${status}", Title="${title}"`
                 );
               }
@@ -309,14 +305,13 @@ const ReviewNotificationService = {
               if (
                 !status ||
                 status.toString().trim().toLowerCase() !==
-                  sheetConfig.needsReviewValue
+                sheetConfig.needsReviewValue
               ) {
                 if (CONFIG.debugMode && status && rowIdx < 5) {
                   Logger.log(
                     `      Skipping: status="${status
                       .toString()
-                      .trim()}" doesn't match "${
-                      sheetConfig.needsReviewValue
+                      .trim()}" doesn't match "${sheetConfig.needsReviewValue
                     }" (case-insensitive)`
                   );
                 }
@@ -381,8 +376,7 @@ const ReviewNotificationService = {
 
               if (CONFIG.debugMode) {
                 Logger.log(
-                  `Added review request for ${student.name} - "${taskTitle}" (${
-                    sheetConfig.sheetName
+                  `Added review request for ${student.name} - "${taskTitle}" (${sheetConfig.sheetName
                   })${taskLink ? " (link: " + taskLink + ")" : ""}`
                 );
               }
@@ -681,9 +675,8 @@ const ReviewNotificationService = {
         })
         .join("\n\n");
 
-      const subject = `${requests.length} Task${
-        requests.length > 1 ? "s" : ""
-      } Need${requests.length === 1 ? "s" : ""} Review - Summit CRM`;
+      const subject = `${requests.length} Task${requests.length > 1 ? "s" : ""
+        } Need${requests.length === 1 ? "s" : ""} Review - Summit CRM`;
 
       const body = `Hi ${advisorName},
 
