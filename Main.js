@@ -65,6 +65,9 @@ function getStudentData() {
   // Cache miss - fetch from sheet
   const students = StudentDataService.getStudentData();
 
+  // Sort students alphabetically by name
+  students.sort((a, b) => a.name.localeCompare(b.name));
+
   // Cache for next time
   SummitCacheService.cacheStudentList(students);
 
@@ -195,4 +198,41 @@ function markReviewAsCompleted(studentName) {
 
 function setupReviewQueue() {
   return ReviewNotificationService.setupReviewQueue();
+}
+
+/**
+ * Collects outbound reviews from all student spreadsheets (Reviewed: status).
+ * Phase 1: Data Collection - Scans student sheets for advisor feedback, writes to OutboundQueue.
+ * Wrapper function that delegates to OutboundReviewService.collectOutboundReviews().
+ * This should be called by a time-based trigger (every hour).
+ *
+ * @returns {Object} Collection results
+ * @see {@link OutboundReviewService.collectOutboundReviews}
+ */
+function collectOutboundReviews() {
+  return OutboundReviewService.collectOutboundReviews(null);
+}
+
+/**
+ * Processes pending outbound reviews and notifies students.
+ * Phase 2: Notification - Reads OutboundQueue and sends individual emails to students (fast).
+ * Wrapper function that delegates to OutboundReviewService.processOutboundReviews().
+ * This should be called by a time-based trigger (every 10 minutes).
+ *
+ * @returns {Object} Processing results
+ * @see {@link OutboundReviewService.processOutboundReviews}
+ */
+function processOutboundReviews() {
+  return OutboundReviewService.processOutboundReviews();
+}
+
+/**
+ * Sets up the OutboundQueue sheet with proper headers.
+ * Run this once during initial setup.
+ *
+ * @returns {Object} Result object
+ * @see {@link OutboundReviewService.setupOutboundQueue}
+ */
+function setupOutboundQueue() {
+  return OutboundReviewService.setupOutboundQueue();
 }

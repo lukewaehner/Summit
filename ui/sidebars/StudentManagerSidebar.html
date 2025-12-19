@@ -160,8 +160,6 @@
             '<div class="empty-state">No students found.</div>';
           return;
         }
-        // Pre sort students
-        students = students.sort((s1, s2) => s1.name - s2.name);
 
         // Build HTML for student count with proper pluralization
         var html =

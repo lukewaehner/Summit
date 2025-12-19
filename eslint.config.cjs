@@ -26,6 +26,7 @@ module.exports = [
         StudentDataService: "writable",
         EmailService: "writable",
         ReviewNotificationService: "writable",
+        OutboundReviewService: "writable",
         SummitCacheService: "writable",
         // Helpers
         meetingHelpers: "writable",
@@ -54,6 +55,11 @@ module.exports = [
         processReviewRequests: "writable",
         markReviewAsCompleted: "writable",
         setupReviewQueue: "writable",
+        // Outbound Review Notification Functions
+        collectOutboundReviews: "writable",
+        processOutboundReviews: "writable",
+        setupOutboundQueue: "writable",
+        debugOutboundNotifications: "writable",
       },
     },
     rules: {
@@ -63,7 +69,7 @@ module.exports = [
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern:
-            "^(CONFIG|Meeting|meetingHelpers|MeetingDataService|StudentDataService|EmailService|ReviewNotificationService|SummitCacheService|loadMeetings|sendMeetingNotes|syncAllData|updateStudentDataSpreadhseet|grabAllMeetings|trackMeetingsToStudents|buildMeetingRowsForStudent|getMeetingTimestamp|spreadsheetHelperFunctions|getStudentData|getStudentMeetings|openSidebar|openStudentMeetingSidebar|getStudentManagerSidebarHtml|getStudentMeetingSidebarHtml|startMenu|getStudentDataCheck|sendMeetingNotesEmail|collectReviewRequests|processReviewRequests|markReviewAsCompleted|setupReviewQueue)$",
+            "^(CONFIG|Meeting|meetingHelpers|MeetingDataService|StudentDataService|EmailService|ReviewNotificationService|OutboundReviewService|SummitCacheService|loadMeetings|sendMeetingNotes|syncAllData|updateStudentDataSpreadhseet|grabAllMeetings|trackMeetingsToStudents|buildMeetingRowsForStudent|getMeetingTimestamp|spreadsheetHelperFunctions|getStudentData|getStudentMeetings|openSidebar|openStudentMeetingSidebar|getStudentManagerSidebarHtml|getStudentMeetingSidebarHtml|startMenu|getStudentDataCheck|sendMeetingNotesEmail|collectReviewRequests|processReviewRequests|markReviewAsCompleted|setupReviewQueue|collectOutboundReviews|processOutboundReviews|setupOutboundQueue|debugOutboundNotifications)$",
         },
       ],
       // Allow redeclaration for Apps Script backwards compatibility

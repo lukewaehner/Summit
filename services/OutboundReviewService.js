@@ -1,12 +1,12 @@
 /**
- * Service for managing review request notifications via a centralized queue.
+ * Service for managing outbound review notifications (Advisor → Student).
  * Two-phase architecture:
- * 1. collectReviewRequests() - Scans all student sheets, writes to central queue (slow, runs hourly)
- * 2. processReviewRequests() - Reads queue, sends emails (fast, runs every 10 min)
- * @namespace ReviewNotificationService
+ * 1. collectOutboundReviews() - Scans all student sheets for "Reviewed:" status, writes to OutboundQueue (slow, runs hourly)
+ * 2. processOutboundReviews() - Reads queue, sends individual emails to students (fast, runs every 10 min)
+ * @namespace OutboundReviewService
  */
 
-const ReviewNotificationService = {
+const OutboundReviewService = {
   /**
    * Review status constants
    * @enum {string}
@@ -18,16 +18,17 @@ const ReviewNotificationService = {
   },
 
   /**
-   * Column indices in ReviewQueue sheet (0-based after header)
-   * Expected columns: A=Timestamp, B=StudentName, C=ReviewType, D=Notes, E=Status, F=NotifiedAt
+   * Column indices in OutboundQueue sheet (0-based after header)
+   * Expected columns: A=Timestamp, B=StudentName, C=TaskTitle, D=FeedbackText, E=DocumentLink, F=Status, G=NotifiedAt
    */
   COLUMNS: {
     TIMESTAMP: 0,
     STUDENT_NAME: 1,
-    REVIEW_TYPE: 2,
-    NOTES: 3,
-    STATUS: 4,
-    NOTIFIED_AT: 5,
+    TASK_TITLE: 2,
+    FEEDBACK_TEXT: 3,
+    DOCUMENT_LINK: 4,
+    STATUS: 5,
+    NOTIFIED_AT: 6,
   },
 
   /**
@@ -37,9 +38,14 @@ const ReviewNotificationService = {
   _MAX_EXECUTION_TIME: 280000,
 
   /**
+   * Prefix that indicates a reviewed status (case-insensitive)
+   * @private
+   */
+  _REVIEWED_PREFIX: "reviewed:",
+
+  /**
    * Configuration for where to find review status in student sheets
-   * Students can have multiple tasks across multiple sheets
-   * Each config defines one sheet to scan
+   * Reuses the same sheet configurations as inbound reviews
    */
   STUDENT_SHEET_CONFIGS: [
     {
@@ -48,7 +54,6 @@ const ReviewNotificationService = {
       statusColumn: 3, // Column C = status (A=1, B=2, C=3)
       titleColumn: 4, // Column D = task title/description
       linkColumn: 8, // Column H = document link
-      needsReviewValue: "needs review", // Lowercase for case-insensitive comparison
       hasLinks: true, // This sheet has document links
     },
     {
@@ -57,19 +62,19 @@ const ReviewNotificationService = {
       statusColumn: 5, // Column E = status (A=1, B=2, C=3, D=4, E=5)
       titleColumn: 4, // Column D = application title/description
       linkColumn: null, // No links in this sheet
-      needsReviewValue: "needs review", // Lowercase for case-insensitive comparison
       hasLinks: false, // No document links
     },
   ],
 
   /**
-   * Collects review requests from all student spreadsheets and writes to ReviewQueue.
+   * Collects outbound reviews from all student spreadsheets and writes to OutboundQueue.
    * This is Phase 1: Data Collection (slow, runs less frequently - e.g., hourly)
    *
    * **Strategy:**
    * - Opens each student spreadsheet sequentially
-   * - Checks specific cell for "Needs Review" status
-   * - Writes new requests to ReviewQueue sheet
+   * - Checks status columns for "Reviewed:" prefix
+   * - Extracts feedback text after "Reviewed:"
+   * - Writes new reviews to OutboundQueue sheet
    * - Uses chunked processing to handle timeouts gracefully
    *
    * **Performance:**
@@ -85,10 +90,10 @@ const ReviewNotificationService = {
    * @example
    * // Set up time-based trigger:
    * // Apps Script Editor → Triggers → Add Trigger
-   * // Function: collectReviewRequests
+   * // Function: collectOutboundReviews
    * // Event: Time-driven, Hour timer, Every hour
    */
-  collectReviewRequests(options) {
+  collectOutboundReviews(options) {
     const startTime = Date.now();
     const opts = options || { batchSize: 50, resetState: false };
     const batchSize = typeof opts.batchSize === "number" ? opts.batchSize : 50;
@@ -97,7 +102,7 @@ const ReviewNotificationService = {
 
     const results = {
       scanned: 0,
-      newRequests: 0,
+      newReviews: 0,
       skipped: 0,
       errors: [],
       executionTime: 0,
@@ -109,17 +114,19 @@ const ReviewNotificationService = {
       const scriptProps = PropertiesService.getScriptProperties();
       let lastProcessedIndex = resetState
         ? 0
-        : parseInt(scriptProps.getProperty("lastProcessedStudentIndex") || "0");
+        : parseInt(
+            scriptProps.getProperty("lastProcessedStudentIndexOutbound") || "0"
+          );
 
       // Open central sheets
       const broadcastSs = spreadsheetHelperFunctions.openSpreadsheetWithId(
         CONFIG.sheets.broadcastSheet.id
       );
-      const reviewQueue = broadcastSs.getSheetByName("ReviewQueue");
+      const outboundQueue = broadcastSs.getSheetByName("OutboundQueue");
 
-      if (!reviewQueue) {
+      if (!outboundQueue) {
         throw new Error(
-          "ReviewQueue sheet not found. Run setupReviewQueue() first."
+          "OutboundQueue sheet not found. Run setupOutboundQueue() first."
         );
       }
 
@@ -128,7 +135,7 @@ const ReviewNotificationService = {
 
       if (CONFIG.debugMode) {
         Logger.log(
-          `Starting collection from index ${lastProcessedIndex} of ${allStudents.length} students`
+          `Starting outbound collection from index ${lastProcessedIndex} of ${allStudents.length} students`
         );
       }
 
@@ -145,7 +152,10 @@ const ReviewNotificationService = {
           Logger.log(
             `Approaching execution time limit. Processed ${results.scanned} students. Will resume next run.`
           );
-          scriptProps.setProperty("lastProcessedStudentIndex", i.toString());
+          scriptProps.setProperty(
+            "lastProcessedStudentIndexOutbound",
+            i.toString()
+          );
           return results;
         }
 
@@ -166,9 +176,9 @@ const ReviewNotificationService = {
             );
           }
 
-          // Get existing requests for duplicate checking (once per student)
-          const existingRequests = reviewQueue
-            .getRange(2, 1, Math.max(reviewQueue.getLastRow() - 1, 1), 6)
+          // Get existing reviews for duplicate checking (once per student)
+          const existingReviews = outboundQueue
+            .getRange(2, 1, Math.max(outboundQueue.getLastRow() - 1, 1), 7)
             .getValues();
 
           // Loop through all configured sheets (Tasks, ApplicationTracker, etc.)
@@ -184,7 +194,6 @@ const ReviewNotificationService = {
 
             if (!targetSheet) {
               if (CONFIG.debugMode) {
-                // List all available sheet names for debugging
                 const allSheets = studentSs
                   .getSheets()
                   .map((s) => s.getName())
@@ -250,10 +259,8 @@ const ReviewNotificationService = {
             }
 
             // Track stats for this sheet
-            let needsReviewCount = 0;
-            let emptyStatusCount = 0;
+            let reviewedCount = 0;
             let consecutiveEmptyRows = 0;
-            let firstNeedsReviewRow = null;
             const MAX_CONSECUTIVE_EMPTY = 20; // Stop after 20 consecutive empty rows
 
             // Process each row
@@ -279,49 +286,19 @@ const ReviewNotificationService = {
                 consecutiveEmptyRows = 0; // Reset counter when we find data
               }
 
-              // Count rows with "Needs Review" for summary (case-insensitive)
-              if (
-                status &&
-                status.toString().trim().toLowerCase() ===
-                  sheetConfig.needsReviewValue
-              ) {
-                needsReviewCount++;
-                if (!firstNeedsReviewRow && title) {
-                  firstNeedsReviewRow = {
-                    row: sheetConfig.startRow + rowIdx,
-                    status: status,
-                    title: title,
-                  };
-                }
-              }
-              if (!status) emptyStatusCount++;
-
-              // Only log first 5 rows to avoid spam
-              if (CONFIG.debugMode && rowIdx < 5) {
-                Logger.log(
-                  `    Row ${
-                    sheetConfig.startRow + rowIdx
-                  }: Status="${status}", Title="${title}"`
-                );
-              }
-
-              // Check if this row needs review (case-insensitive)
+              // Check if status starts with "Reviewed:" (case-insensitive)
               if (
                 !status ||
-                status.toString().trim().toLowerCase() !==
-                  sheetConfig.needsReviewValue
+                !status
+                  .toString()
+                  .trim()
+                  .toLowerCase()
+                  .startsWith(this._REVIEWED_PREFIX)
               ) {
-                if (CONFIG.debugMode && status && rowIdx < 5) {
-                  Logger.log(
-                    `      Skipping: status="${status
-                      .toString()
-                      .trim()}" doesn't match "${
-                      sheetConfig.needsReviewValue
-                    }" (case-insensitive)`
-                  );
-                }
-                continue; // Skip rows that don't need review
+                continue; // Skip rows that don't start with "Reviewed:"
               }
+
+              reviewedCount++;
 
               // Skip if no title (empty task)
               if (!title) {
@@ -332,6 +309,12 @@ const ReviewNotificationService = {
               }
 
               const taskTitle = title.toString().trim();
+
+              // Extract feedback text after "Reviewed:"
+              const statusText = status.toString().trim();
+              const feedbackText = statusText
+                .substring(this._REVIEWED_PREFIX.length)
+                .trim();
 
               // Extract link if this sheet has links
               let taskLink = "";
@@ -344,11 +327,11 @@ const ReviewNotificationService = {
                 }
               }
 
-              // Check if this specific task already exists in queue (avoid duplicates)
-              const alreadyInQueue = existingRequests.some(
+              // Check if this specific review already exists in queue (avoid duplicates)
+              const alreadyInQueue = existingReviews.some(
                 (row) =>
                   row[this.COLUMNS.STUDENT_NAME] === student.name &&
-                  row[this.COLUMNS.REVIEW_TYPE] === taskTitle &&
+                  row[this.COLUMNS.TASK_TITLE] === taskTitle &&
                   (row[this.COLUMNS.STATUS] === this.STATUS.PENDING ||
                     row[this.COLUMNS.STATUS] === this.STATUS.NOTIFIED)
               );
@@ -356,34 +339,37 @@ const ReviewNotificationService = {
               if (alreadyInQueue) {
                 if (CONFIG.debugMode) {
                   Logger.log(
-                    `${student.name} - "${taskTitle}" (${sheetConfig.sheetName}) already in queue, skipping`
+                    `${student.name} - "${taskTitle}" (${sheetConfig.sheetName}) already in outbound queue, skipping`
                   );
                 }
                 continue;
               }
 
-              // Add new request to queue
+              // Add new review to queue
               const timestamp = new Date();
-              const nextRow = reviewQueue.getLastRow() + 1;
+              const nextRow = outboundQueue.getLastRow() + 1;
 
-              reviewQueue.getRange(nextRow, 1, 1, 6).setValues([
+              outboundQueue.getRange(nextRow, 1, 1, 7).setValues([
                 [
                   timestamp,
                   student.name,
-                  taskTitle, // Review Type = Task Title
-                  taskLink, // Notes = Document Link (or empty for ApplicationTracker)
+                  taskTitle, // Task Title
+                  feedbackText, // Feedback text (stored but not used in email for Option B)
+                  taskLink, // Document Link (or empty for ApplicationTracker)
                   this.STATUS.PENDING,
                   "", // notified_at will be filled when processed
                 ],
               ]);
 
-              results.newRequests++;
+              results.newReviews++;
 
               if (CONFIG.debugMode) {
                 Logger.log(
-                  `Added review request for ${student.name} - "${taskTitle}" (${
-                    sheetConfig.sheetName
-                  })${taskLink ? " (link: " + taskLink + ")" : ""}`
+                  `Added outbound review for ${
+                    student.name
+                  } - "${taskTitle}" (${sheetConfig.sheetName})${
+                    taskLink ? " (link: " + taskLink + ")" : ""
+                  }`
                 );
               }
             }
@@ -391,15 +377,8 @@ const ReviewNotificationService = {
             // Log summary for this sheet
             if (CONFIG.debugMode) {
               Logger.log(
-                `  "${sheetConfig.sheetName}" summary: ${needsReviewCount} rows with "Needs Review", ${emptyStatusCount} empty statuses`
+                `  "${sheetConfig.sheetName}" summary: ${reviewedCount} rows with "Reviewed:" status`
               );
-              if (firstNeedsReviewRow) {
-                Logger.log(
-                  `    First "Needs Review" at row ${firstNeedsReviewRow.row}: "${firstNeedsReviewRow.title}"`
-                );
-              } else if (needsReviewCount > 0) {
-                Logger.log(`    All "Needs Review" rows are missing titles`);
-              }
             }
           }
         } catch (error) {
@@ -417,13 +396,13 @@ const ReviewNotificationService = {
       // Check if we completed all students
       if (endIndex >= allStudents.length) {
         results.completed = true;
-        scriptProps.setProperty("lastProcessedStudentIndex", "0"); // Reset for next full scan
+        scriptProps.setProperty("lastProcessedStudentIndexOutbound", "0"); // Reset for next full scan
         if (CONFIG.debugMode) {
-          Logger.log("Completed full scan of all students");
+          Logger.log("Completed full outbound scan of all students");
         }
       } else {
         scriptProps.setProperty(
-          "lastProcessedStudentIndex",
+          "lastProcessedStudentIndexOutbound",
           endIndex.toString()
         );
         if (CONFIG.debugMode) {
@@ -437,11 +416,11 @@ const ReviewNotificationService = {
 
       if (CONFIG.debugMode) {
         Logger.log(
-          `Collection complete: Scanned ${results.scanned}, New requests: ${results.newRequests}, Skipped: ${results.skipped}, Time: ${results.executionTime}ms`
+          `Outbound collection complete: Scanned ${results.scanned}, New reviews: ${results.newReviews}, Skipped: ${results.skipped}, Time: ${results.executionTime}ms`
         );
       }
     } catch (error) {
-      Logger.log("Error in collectReviewRequests: " + error.toString());
+      Logger.log("Error in collectOutboundReviews: " + error.toString());
       results.errors.push({
         error: "Fatal error: " + error.message,
       });
@@ -451,30 +430,29 @@ const ReviewNotificationService = {
   },
 
   /**
-   * Processes all pending review requests from the ReviewQueue sheet.
+   * Processes all pending outbound reviews from the OutboundQueue sheet.
    * This is Phase 2: Notification (fast, runs frequently - e.g., every 10 minutes)
    *
    * **How it works:**
-   * 1. Opens ONLY the ReviewQueue sheet (1 API call)
-   * 2. Reads all pending requests (1 range read)
-   * 3. Groups by advisor (in-memory, fast)
-   * 4. Sends one email per advisor with list of students
-   * 5. Updates status to "notified"
+   * 1. Opens ONLY the OutboundQueue sheet (1 API call)
+   * 2. Reads all pending reviews (1 range read)
+   * 3. Sends individual email to each student
+   * 4. Updates status to "notified"
    *
    * **Performance:**
-   * - 100 students: ~5-15 seconds total
+   * - 50 reviews: ~15-25 seconds total
    * - Single spreadsheet operation
-   * - No individual student sheet access needed
+   * - Individual emails per student (not batched)
    *
    * @returns {Object} Processing results with counts and timing
    *
    * @example
    * // Set up time-based trigger:
    * // Apps Script Editor → Triggers → Add Trigger
-   * // Function: processReviewRequests
+   * // Function: processOutboundReviews
    * // Event: Time-driven, Minutes timer, Every 10 minutes
    */
-  processReviewRequests() {
+  processOutboundReviews() {
     const startTime = Date.now();
     const results = {
       processed: 0,
@@ -484,32 +462,32 @@ const ReviewNotificationService = {
     };
 
     try {
-      // Step 1: Open ReviewQueue sheet (single operation)
+      // Step 1: Open OutboundQueue sheet (single operation)
       const broadcastSs = spreadsheetHelperFunctions.openSpreadsheetWithId(
         CONFIG.sheets.broadcastSheet.id
       );
-      const reviewQueue = broadcastSs.getSheetByName("ReviewQueue");
+      const outboundQueue = broadcastSs.getSheetByName("OutboundQueue");
 
-      if (!reviewQueue) {
+      if (!outboundQueue) {
         throw new Error(
-          "ReviewQueue sheet not found. Please create it in the Broadcast Sheet."
+          "OutboundQueue sheet not found. Please create it in the Broadcast Sheet."
         );
       }
 
-      const lastRow = reviewQueue.getLastRow();
+      const lastRow = outboundQueue.getLastRow();
       if (lastRow < 2) {
-        // No requests (only header row or empty)
+        // No reviews (only header row or empty)
         if (CONFIG.debugMode) {
-          Logger.log("No review requests in queue");
+          Logger.log("No outbound reviews in queue");
         }
         return results;
       }
 
       // Step 2: Read all rows at once (efficient bulk read)
-      const data = reviewQueue.getRange(2, 1, lastRow - 1, 6).getValues();
+      const data = outboundQueue.getRange(2, 1, lastRow - 1, 7).getValues();
 
-      // Step 3: Filter pending requests (in-memory, very fast)
-      const pendingRequests = [];
+      // Step 3: Filter pending reviews (in-memory, very fast)
+      const pendingReviews = [];
       for (let i = 0; i < data.length; i++) {
         const row = data[i];
         const status = row[this.COLUMNS.STATUS];
@@ -520,80 +498,73 @@ const ReviewNotificationService = {
 
           if (!studentName) continue; // Skip empty rows
 
-          // Look up advisor from StudentData sheet
-          const advisor = this._getAdvisorForStudent(studentName);
+          // Look up student email from StudentData or Home Page
+          const studentEmail = this._getStudentEmail(studentName);
 
-          if (!advisor) {
+          if (!studentEmail) {
             if (CONFIG.debugMode) {
-              Logger.log(`Warning: No advisor found for ${studentName}`);
+              Logger.log(`Warning: No email found for ${studentName}`);
             }
             continue;
           }
 
-          pendingRequests.push({
+          pendingReviews.push({
             rowIndex: i,
             actualRow: i + 2, // Adjust for header and 0-based index
             timestamp: row[this.COLUMNS.TIMESTAMP],
             studentName: studentName,
-            reviewType: row[this.COLUMNS.REVIEW_TYPE] || "General",
-            notes: row[this.COLUMNS.NOTES] || "",
-            advisor: advisor,
+            taskTitle: row[this.COLUMNS.TASK_TITLE] || "General",
+            feedbackText: row[this.COLUMNS.FEEDBACK_TEXT] || "",
+            documentLink: row[this.COLUMNS.DOCUMENT_LINK] || "",
+            studentEmail: studentEmail,
           });
         }
       }
 
       if (CONFIG.debugMode) {
-        Logger.log(`Found ${pendingRequests.length} pending review requests`);
+        Logger.log(`Found ${pendingReviews.length} pending outbound reviews`);
       }
 
-      if (pendingRequests.length === 0) {
+      if (pendingReviews.length === 0) {
         return results;
       }
 
-      // Step 4: Group by advisor (minimize emails)
-      const byAdvisor = this._groupByAdvisor(pendingRequests);
-
-      // Step 5: Send notifications and update status
+      // Step 4: Send notifications and update status
       const now = new Date();
       const rowsToUpdate = [];
 
-      for (const advisor in byAdvisor) {
-        if (!Object.prototype.hasOwnProperty.call(byAdvisor, advisor)) continue;
-        const requests = byAdvisor[advisor];
-
-        // Check execution time before processing each advisor
+      for (const review of pendingReviews) {
+        // Check execution time before processing each review
         if (Date.now() - startTime > this._MAX_EXECUTION_TIME) {
           Logger.log("Approaching execution time limit, stopping early");
           break;
         }
 
-        const emailResult = this._sendAdvisorNotification(advisor, requests);
+        const emailResult = this._sendStudentNotification(review);
 
         if (emailResult.success) {
-          // Mark these requests as notified
-          for (const request of requests) {
-            rowsToUpdate.push({
-              row: request.actualRow,
-              status: this.STATUS.NOTIFIED,
-              notifiedAt: now,
-            });
-          }
-          results.notified += requests.length;
+          // Mark this review as notified
+          rowsToUpdate.push({
+            row: review.actualRow,
+            status: this.STATUS.NOTIFIED,
+            notifiedAt: now,
+          });
+          results.notified++;
         } else {
           results.errors.push({
-            advisor: advisor,
+            student: review.studentName,
             error: emailResult.message,
           });
         }
 
-        results.processed += requests.length;
+        results.processed++;
       }
 
-      // Step 6: Batch update status (write back to sheet)
+      // Step 5: Batch update status (write back to sheet)
       if (rowsToUpdate.length > 0) {
         for (const update of rowsToUpdate) {
-          reviewQueue
-            .getRange(update.row, 5, 1, 2)
+          outboundQueue
+            .getRange(update.row, 6, 1, 2)
             .setValues([[update.status, update.notifiedAt]]);
         }
       }
@@ -602,11 +573,11 @@ const ReviewNotificationService = {
 
       if (CONFIG.debugMode) {
         Logger.log(
-          `Processed ${results.processed} requests, notified advisors about ${results.notified} students in ${results.executionTime}ms`
+          `Processed ${results.processed} reviews, notified ${results.notified} students in ${results.executionTime}ms`
         );
       }
     } catch (error) {
-      Logger.log("Error processing review requests: " + error.toString());
+      Logger.log("Error processing outbound reviews: " + error.toString());
       results.errors.push({
         error: "Fatal error: " + error.message,
       });
@@ -616,89 +587,99 @@ const ReviewNotificationService = {
   },
 
   /**
-   * Gets the advisor name for a given student by looking up StudentData sheet.
+   * Gets the email address for a given student.
+   * First tries StudentData sheet (column C), then fallback to Home Page F5.
    * @private
    * @param {string} studentName - Name of the student
-   * @returns {string|null} Advisor name or null if not found
+   * @returns {string|null} Email address or null if not found
    */
-  _getAdvisorForStudent(studentName) {
+  _getStudentEmail(studentName) {
     try {
       const students = StudentDataService.getAllStudents();
       const student = students.find((s) => s.name === studentName);
-      return student ? student.advisor : null;
+
+      // First try email from StudentData (column C)
+      if (student && student.email && student.email.trim() !== "") {
+        return student.email.trim();
+      }
+
+      // Fallback: Try to get email from student's Home Page F5
+      if (student && student.url) {
+        try {
+          const studentSs = spreadsheetHelperFunctions.openSpreadsheetWithUrl(
+            student.url
+          );
+          const homePage = studentSs.getSheetByName("Home Page");
+
+          if (homePage) {
+            const emailCell = homePage.getRange("F5").getValue();
+            const email = String(emailCell || "").trim();
+            if (email !== "") {
+              if (CONFIG.debugMode) {
+                Logger.log(
+                  `Retrieved email from Home Page F5 for ${studentName}: ${email}`
+                );
+              }
+              return email;
+            }
+          }
+        } catch (error) {
+          Logger.log(
+            `Error fetching email from Home Page for ${studentName}: ${error.toString()}`
+          );
+        }
+      }
+
+      return null;
     } catch (error) {
-      Logger.log(`Error looking up advisor for ${studentName}: ${error}`);
+      Logger.log(`Error looking up email for ${studentName}: ${error}`);
       return null;
     }
   },
 
   /**
-   * Groups review requests by advisor.
+   * Sends a notification email to a student about their reviewed work.
+   * Option B: Simple notification without feedback text in email.
    * @private
-   * @param {Array<Object>} requests - Array of request objects
-   * @returns {Object} Requests grouped by advisor name
-   */
-  _groupByAdvisor(requests) {
-    const grouped = {};
-
-    for (const request of requests) {
-      const advisor = request.advisor || "Unknown";
-      if (!grouped[advisor]) {
-        grouped[advisor] = [];
-      }
-      grouped[advisor].push(request);
-    }
-
-    return grouped;
-  },
-
-  /**
-   * Sends a notification email to an advisor about pending review requests.
-   * @private
-   * @param {string} advisorName - Name of the advisor
-   * @param {Array<Object>} requests - Review requests for this advisor
+   * @param {Object} review - Review object with student info
    * @returns {Object} Result object
    */
-  _sendAdvisorNotification(advisorName, requests) {
+  _sendStudentNotification(review) {
     try {
-      const advisorEmail = this._getAdvisorEmail(advisorName);
-
-      if (!advisorEmail) {
+      if (!review.studentEmail) {
         return {
           success: false,
-          message: `No email found for advisor: ${advisorName}`,
+          message: `No email found for student: ${review.studentName}`,
         };
       }
 
-      // Build email content with grouped requests
-      const requestList = requests
-        .map((r) => {
-          const timestamp = this._formatTimestamp(r.timestamp);
-          // Only show link line if there's actually a link
-          const link =
-            r.notes && r.notes.trim() !== "" ? `\n  Link: ${r.notes}` : "";
-          return `• ${r.studentName} - ${r.reviewType}\n  Submitted: ${timestamp}${link}`;
-        })
-        .join("\n\n");
+      // Build email content - Option B: Just notification, no feedback
+      let reviewList = "";
 
-      const subject = `${requests.length} Task${
-        requests.length > 1 ? "s" : ""
-      } Need${requests.length === 1 ? "s" : ""} Review - Summit CRM`;
+      if (review.documentLink && review.documentLink.trim() !== "") {
+        // Has document link
+        reviewList = `Task: ${review.taskTitle}\nDocument Link: ${review.documentLink}`;
+      } else {
+        // No document link (ApplicationTracker)
+        reviewList = `Application: ${review.taskTitle}`;
+      }
 
-      const body = `Hi ${advisorName},
+      const subject = `Your Submission Has Been Reviewed - Summit CRM`;
 
-The following task${requests.length > 1 ? "s need" : " needs"} review:
+      const body = `Hi ${review.studentName},
 
-${requestList}
+Your advisor has reviewed your work, please review and make any necessary changes:
 
-You can access each student's spreadsheet from the Student Data sheet.
+${reviewList}
 
 —
+If you have questions, please reach out to your advisor.
+
 Summit CRM Automated Notification`;
 
       MailApp.sendEmail({
-        // to: advisorEmail,
-        to: "luke.waehner@gmail.com",
+        // to: review.studentEmail,
+        to: "luke.waehner@gmail.com", // TEST MODE - change to review.studentEmail for production
         subject: subject,
         body: body,
         name: "Summit CRM",
@@ -706,35 +687,23 @@ Summit CRM Automated Notification`;
 
       if (CONFIG.debugMode) {
         Logger.log(
-          `Sent notification to ${advisorName} (${advisorEmail}) for ${requests.length} review requests`
+          `Sent review notification to ${review.studentName} (${review.studentEmail}) for "${review.taskTitle}"`
         );
       }
 
       return {
         success: true,
-        message: `Notified ${advisorName}`,
+        message: `Notified ${review.studentName}`,
       };
     } catch (error) {
-      Logger.log(`Error sending notification to ${advisorName}: ${error}`);
+      Logger.log(
+        `Error sending notification to ${review.studentName}: ${error}`
+      );
       return {
         success: false,
         message: error.message,
       };
     }
-  },
-
-  /**
-   * Gets advisor email address from name.
-   * @private
-   */
-  _getAdvisorEmail(advisorName) {
-    // Map advisor names to email addresses
-    const advisorEmails = {
-      Maggie: "maggie@summitacademicsupport.com",
-      Jackie: "jackie@summitacademicsupport.com",
-    };
-
-    return advisorEmails[advisorName] || null;
   },
 
   /**
@@ -773,143 +742,72 @@ Summit CRM Automated Notification`;
   },
 
   /**
-   * Marks a review request as completed.
-   * Advisors can call this after reviewing a student's work.
-   *
-   * @param {string} studentName - Name of the student
-   * @returns {Object} Result object
-   *
-   * @example
-   * ReviewNotificationService.markAsCompleted("John Doe");
-   */
-  markAsCompleted(studentName) {
-    try {
-      const broadcastSs = spreadsheetHelperFunctions.openSpreadsheetWithId(
-        CONFIG.sheets.broadcastSheet.id
-      );
-      const reviewQueue = broadcastSs.getSheetByName("ReviewQueue");
-
-      if (!reviewQueue) {
-        throw new Error("ReviewQueue sheet not found");
-      }
-
-      const lastRow = reviewQueue.getLastRow();
-      if (lastRow < 2) {
-        return {
-          success: false,
-          message: "No review requests found",
-        };
-      }
-
-      const data = reviewQueue.getRange(2, 1, lastRow - 1, 6).getValues();
-
-      // Find the most recent pending/notified request for this student
-      let foundRow = -1;
-      for (let i = data.length - 1; i >= 0; i--) {
-        // Search backwards (most recent first)
-        if (
-          data[i][this.COLUMNS.STUDENT_NAME] === studentName &&
-          (data[i][this.COLUMNS.STATUS] === this.STATUS.PENDING ||
-            data[i][this.COLUMNS.STATUS] === this.STATUS.NOTIFIED)
-        ) {
-          foundRow = i + 2; // Adjust for header and 0-based
-          break;
-        }
-      }
-
-      if (foundRow === -1) {
-        return {
-          success: false,
-          message: `No pending review found for ${studentName}`,
-        };
-      }
-
-      // Update status to completed
-      reviewQueue.getRange(foundRow, 5).setValue(this.STATUS.COMPLETED);
-
-      if (CONFIG.debugMode) {
-        Logger.log(`Marked review as completed for ${studentName}`);
-      }
-
-      return {
-        success: true,
-        message: `Review completed for ${studentName}`,
-      };
-    } catch (error) {
-      Logger.log("Error marking as completed: " + error.toString());
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
-  },
-
-  /**
-   * Creates the ReviewQueue sheet with proper headers.
+   * Creates the OutboundQueue sheet with proper headers.
    * Run this once during setup.
    *
    * @returns {Object} Result object
    *
    * @example
-   * ReviewNotificationService.setupReviewQueue();
+   * OutboundReviewService.setupOutboundQueue();
    */
-  setupReviewQueue() {
+  setupOutboundQueue() {
     try {
       const broadcastSs = spreadsheetHelperFunctions.openSpreadsheetWithId(
         CONFIG.sheets.broadcastSheet.id
       );
 
-      // Check if ReviewQueue already exists
-      let reviewQueue = broadcastSs.getSheetByName("ReviewQueue");
+      // Check if OutboundQueue already exists
+      let outboundQueue = broadcastSs.getSheetByName("OutboundQueue");
 
-      if (reviewQueue) {
+      if (outboundQueue) {
         return {
           success: true,
-          message: "ReviewQueue sheet already exists. No setup needed.",
+          message: "OutboundQueue sheet already exists. No setup needed.",
         };
       }
 
       // Create new sheet
-      reviewQueue = broadcastSs.insertSheet("ReviewQueue");
+      outboundQueue = broadcastSs.insertSheet("OutboundQueue");
 
       // Set up headers
       const headers = [
         "Timestamp",
         "Student Name",
-        "Review Type",
-        "Notes",
+        "Task Title",
+        "Feedback Text",
+        "Document Link",
         "Status",
         "Notified At",
       ];
 
-      reviewQueue.getRange(1, 1, 1, headers.length).setValues([headers]);
+      outboundQueue.getRange(1, 1, 1, headers.length).setValues([headers]);
 
       // Format header row
-      const headerRange = reviewQueue.getRange(1, 1, 1, headers.length);
+      const headerRange = outboundQueue.getRange(1, 1, 1, headers.length);
       headerRange.setFontWeight("bold");
-      headerRange.setBackground("#4285f4");
+      headerRange.setBackground("#34a853"); // Green color to distinguish from ReviewQueue
       headerRange.setFontColor("#ffffff");
 
       // Set column widths
-      reviewQueue.setColumnWidth(1, 150); // Timestamp
-      reviewQueue.setColumnWidth(2, 150); // Student Name
-      reviewQueue.setColumnWidth(3, 120); // Review Type
-      reviewQueue.setColumnWidth(4, 300); // Notes
-      reviewQueue.setColumnWidth(5, 100); // Status
-      reviewQueue.setColumnWidth(6, 150); // Notified At
+      outboundQueue.setColumnWidth(1, 150); // Timestamp
+      outboundQueue.setColumnWidth(2, 150); // Student Name
+      outboundQueue.setColumnWidth(3, 120); // Task Title
+      outboundQueue.setColumnWidth(4, 300); // Feedback Text
+      outboundQueue.setColumnWidth(5, 300); // Document Link
+      outboundQueue.setColumnWidth(6, 100); // Status
+      outboundQueue.setColumnWidth(7, 150); // Notified At
 
       // Freeze header row
-      reviewQueue.setFrozenRows(1);
+      outboundQueue.setFrozenRows(1);
 
-      Logger.log("ReviewQueue sheet created successfully");
+      Logger.log("OutboundQueue sheet created successfully");
 
       return {
         success: true,
-        message:
-          "ReviewQueue sheet created successfully. Now create the Google Form.",
+        message: "OutboundQueue sheet created successfully.",
       };
     } catch (error) {
-      Logger.log("Error setting up ReviewQueue: " + error.toString());
+      Logger.log("Error setting up OutboundQueue: " + error.toString());
       return {
         success: false,
         message: error.message,
