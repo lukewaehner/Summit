@@ -36,6 +36,10 @@ const ReviewNotificationService = {
    */
   _MAX_EXECUTION_TIME: 280000,
 
+  GLOBAL_LINKS: {
+    SUPPLEMENTAL_ESSAY_DOC: "C8",
+  },
+
   /**
    * Configuration for where to find review status in student sheets
    * Students can have multiple tasks across multiple sheets
@@ -51,6 +55,7 @@ const ReviewNotificationService = {
       needsReviewValue: "needs review", // Lowercase for case-insensitive comparison
       hasLinks: true, // This sheet has document links
     },
+    // This is for total application review
     {
       sheetName: "ApplicationTracker", // Application tracking sheet
       startRow: 4, // First data row (E4 onwards)
@@ -60,6 +65,16 @@ const ReviewNotificationService = {
       needsReviewValue: "needs review", // Lowercase for case-insensitive comparison
       hasLinks: false, // No document links
     },
+    // This is for supplemental essay review
+    {
+      sheetName: "ApplicationTracker", // Application tracking sheet
+      startRow: 14, // Only focus on actual schools 
+      statusColumn: 38, // Column AL = Supplemental (A=1, B=2, C=3, D=4, E=5)
+      titleColumn: 4, // Column D = application title/description
+      linkColumn: -1, // Special code to grab globals outside -1 = Home page, Supplemental Tracker 
+      needsReviewValue: "needs review", // Lowercase for case-insensitive comparison
+      hasLinks: true, // No document links
+    }
   ],
 
   /**
@@ -160,8 +175,7 @@ const ReviewNotificationService = {
 
           if (CONFIG.debugMode) {
             Logger.log(
-              `Opened spreadsheet for ${
-                student.name
+              `Opened spreadsheet for ${student.name
               }: ${studentSs.getName()} (ID: ${studentSs.getId()})`
             );
           }
@@ -175,8 +189,7 @@ const ReviewNotificationService = {
           for (const sheetConfig of this.STUDENT_SHEET_CONFIGS) {
             if (CONFIG.debugMode) {
               Logger.log(
-                `Looking for sheet: "${
-                  sheetConfig.sheetName
+                `Looking for sheet: "${sheetConfig.sheetName
                 }" in ${studentSs.getName()}`
               );
             }
@@ -240,12 +253,19 @@ const ReviewNotificationService = {
             // Read links if this sheet has them
             let linkRichText = null;
             if (sheetConfig.hasLinks && sheetConfig.linkColumn) {
-              const linkRange = targetSheet.getRange(
-                sheetConfig.startRow,
-                sheetConfig.linkColumn,
-                numRows,
-                1
-              );
+              let linkRange = null;
+              if (sheetConfig.linkColumn === -1) {
+                // Go get home page supplemental link
+                const homeSheet = studentSs.getSheetByName("Home Page");
+                linkRange = homeSheet.getRange(this.GLOBAL_LINKS.SUPPLEMENTAL_ESSAY_DOC); // Fixed for supplemental links
+              } else {
+                linkRange = targetSheet.getRange(
+                  sheetConfig.startRow,
+                  sheetConfig.linkColumn,
+                  numRows,
+                  1
+                );
+              }
               linkRichText = linkRange.getRichTextValues();
             }
 
@@ -267,8 +287,7 @@ const ReviewNotificationService = {
                 if (consecutiveEmptyRows >= MAX_CONSECUTIVE_EMPTY) {
                   if (CONFIG.debugMode) {
                     Logger.log(
-                      `  Stopping early at row ${
-                        sheetConfig.startRow + rowIdx
+                      `  Stopping early at row ${sheetConfig.startRow + rowIdx
                       } after ${MAX_CONSECUTIVE_EMPTY} consecutive empty rows`
                     );
                   }
@@ -283,7 +302,7 @@ const ReviewNotificationService = {
               if (
                 status &&
                 status.toString().trim().toLowerCase() ===
-                  sheetConfig.needsReviewValue
+                sheetConfig.needsReviewValue
               ) {
                 needsReviewCount++;
                 if (!firstNeedsReviewRow && title) {
@@ -299,8 +318,7 @@ const ReviewNotificationService = {
               // Only log first 5 rows to avoid spam
               if (CONFIG.debugMode && rowIdx < 5) {
                 Logger.log(
-                  `    Row ${
-                    sheetConfig.startRow + rowIdx
+                  `    Row ${sheetConfig.startRow + rowIdx
                   }: Status="${status}", Title="${title}"`
                 );
               }
@@ -309,14 +327,13 @@ const ReviewNotificationService = {
               if (
                 !status ||
                 status.toString().trim().toLowerCase() !==
-                  sheetConfig.needsReviewValue
+                sheetConfig.needsReviewValue
               ) {
                 if (CONFIG.debugMode && status && rowIdx < 5) {
                   Logger.log(
                     `      Skipping: status="${status
                       .toString()
-                      .trim()}" doesn't match "${
-                      sheetConfig.needsReviewValue
+                      .trim()}" doesn't match "${sheetConfig.needsReviewValue
                     }" (case-insensitive)`
                   );
                 }
@@ -381,8 +398,7 @@ const ReviewNotificationService = {
 
               if (CONFIG.debugMode) {
                 Logger.log(
-                  `Added review request for ${student.name} - "${taskTitle}" (${
-                    sheetConfig.sheetName
+                  `Added review request for ${student.name} - "${taskTitle}" (${sheetConfig.sheetName
                   })${taskLink ? " (link: " + taskLink + ")" : ""}`
                 );
               }
@@ -681,9 +697,8 @@ const ReviewNotificationService = {
         })
         .join("\n\n");
 
-      const subject = `${requests.length} Task${
-        requests.length > 1 ? "s" : ""
-      } Need${requests.length === 1 ? "s" : ""} Review - Summit CRM`;
+      const subject = `${requests.length} Task${requests.length > 1 ? "s" : ""
+        } Need${requests.length === 1 ? "s" : ""} Review - Summit CRM`;
 
       const body = `Hi ${advisorName},
 
