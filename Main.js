@@ -138,7 +138,7 @@ function sendMeetingNotesEmail(studentName, datetime, notes, recipientEmail) {
 
 /**
  * Debug function to test student data retrieval.
- * Logs each student's data to the Apps Script logger.
+ * Logs each student's data to Apps Scripts.
  */
 function getStudentDataCheck() {
   var students = getStudentData();
