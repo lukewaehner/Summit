@@ -236,3 +236,67 @@ function processOutboundReviews() {
 function setupOutboundQueue() {
   return OutboundReviewService.setupOutboundQueue();
 }
+
+// ============================================================================
+// WORKSHEET VALIDATION SERVICE FUNCTIONS
+// ============================================================================
+
+/**
+ * Collects worksheet validation issues from all student spreadsheets.
+ * Phase 1: Data Collection - Scans Tasks sheets column H for improperly named files.
+ * Files should start with student's last name. Issues are written to WorksheetQueue.
+ * Wrapper function that delegates to WorksheetValidationService.collectWorksheetIssues().
+ * This should be called by a time-based trigger (every hour).
+ *
+ * @returns {Object} Collection results
+ * @see {@link WorksheetValidationService.collectWorksheetIssues}
+ */
+function collectWorksheetIssues() {
+  return WorksheetValidationService.collectWorksheetIssues(null);
+}
+
+/**
+ * Processes pending worksheet issues from the queue.
+ * Phase 2: Processing - Copies, renames, moves files and updates spreadsheet cells.
+ * Wrapper function that delegates to WorksheetValidationService.processWorksheetIssues().
+ * This should be called by a time-based trigger (every 10 minutes).
+ *
+ * @returns {Object} Processing results
+ * @see {@link WorksheetValidationService.processWorksheetIssues}
+ */
+function processWorksheetIssues() {
+  return WorksheetValidationService.processWorksheetIssues();
+}
+
+/**
+ * Sets up the WorksheetQueue sheet with proper headers.
+ * Run this once during initial setup.
+ *
+ * @returns {Object} Result object
+ * @see {@link WorksheetValidationService.setupWorksheetQueue}
+ */
+function setupWorksheetQueue() {
+  return WorksheetValidationService.setupWorksheetQueue();
+}
+
+/**
+ * Resets the worksheet collection state to start from the beginning.
+ * Useful for forcing a full re-scan of all students.
+ *
+ * @returns {Object} Result object
+ * @see {@link WorksheetValidationService.resetCollectionState}
+ */
+function resetWorksheetCollectionState() {
+  return WorksheetValidationService.resetCollectionState();
+}
+
+/**
+ * Gets the current worksheet collection progress.
+ * Shows how many students have been scanned and percentage complete.
+ *
+ * @returns {Object} Progress information
+ * @see {@link WorksheetValidationService.getCollectionProgress}
+ */
+function getWorksheetCollectionProgress() {
+  return WorksheetValidationService.getCollectionProgress();
+}

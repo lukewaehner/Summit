@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<!--
+  Email Template for Outbound Review Notifications (Advisor → Student)
+  
+  Purpose: Professional HTML email template for notifying students that
+  their work has been reviewed and may need revisions.
+  
+  Template Variables (server-side):
+  - studentName: Name of the student
+  - taskTitle: Title of the reviewed task
+  - documentLink: Link to the document (optional)
+  - hasLink: Boolean indicating if documentLink exists
+-->
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      /* Reset styles for email compatibility */
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        background-color: #f9fafb;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* Full-width wrapper */
+      .email-wrapper {
+        width: 100%;
+        background-color: #f9fafb;
+        padding: 40px 20px;
+      }
+
+      /* Container styles */
+      .email-container {
+        max-width: 600px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+      }
+
+      /* Header */
+      .email-header {
+        padding: 32px 40px 24px 40px;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .logo {
+        font-size: 20px;
+        font-weight: 700;
+        color: #111827;
+        margin: 0;
+        letter-spacing: -0.3px;
+      }
+
+      .logo-subtitle {
+        font-size: 13px;
+        color: #6b7280;
+        margin: 4px 0 0 0;
+        font-weight: 400;
+      }
+
+      /* Content area */
+      .email-content {
+        padding: 32px 40px 40px 40px;
+      }
+
+      .greeting {
+        font-size: 16px;
+        color: #111827;
+        margin: 0 0 16px 0;
+        font-weight: 500;
+      }
+
+      .intro-text {
+        font-size: 15px;
+        color: #4b5563;
+        line-height: 1.6;
+        margin: 0 0 28px 0;
+      }
+
+      /* Review card */
+      .review-card {
+        background: #f9fafb;
+        border-radius: 8px;
+        padding: 24px;
+        margin: 0 0 28px 0;
+        border: 1px solid #e5e7eb;
+      }
+
+      .review-header {
+        font-size: 13px;
+        color: #111827;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        margin: 0 0 16px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .review-icon {
+        width: 16px;
+        height: 16px;
+        color: #10b981;
+      }
+
+      .task-title {
+        font-size: 15px;
+        color: #374151;
+        line-height: 1.7;
+        background: #ffffff;
+        padding: 16px;
+        border-radius: 6px;
+        border: 1px solid #e5e7eb;
+        margin: 0;
+      }
+
+      .task-name {
+        font-weight: 600;
+        color: #111827;
+        margin: 0 0 8px 0;
+      }
+
+      .document-link {
+        display: inline-block;
+        margin-top: 12px;
+        padding: 10px 16px;
+        background: #2563eb;
+        color: #ffffff !important;
+        text-decoration: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .document-link:hover {
+        background: #1d4ed8;
+      }
+
+      /* Closing message */
+      .closing {
+        font-size: 15px;
+        color: #4b5563;
+        line-height: 1.6;
+        margin: 0 0 24px 0;
+      }
+
+      .signature {
+        font-size: 15px;
+        color: #111827;
+        font-weight: 500;
+        margin: 0;
+      }
+
+      .signature-org {
+        font-size: 14px;
+        color: #6b7280;
+        margin: 2px 0 0 0;
+      }
+
+      /* Responsive design */
+      @media only screen and (max-width: 600px) {
+        .email-wrapper {
+          padding: 20px 16px;
+        }
+
+        .email-header {
+          padding: 24px 24px 20px 24px;
+        }
+
+        .email-content {
+          padding: 24px 24px 32px 24px;
+        }
+
+        .review-card {
+          padding: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-wrapper">
+      <div class="email-container">
+        <!-- Header -->
+        <div class="email-header">
+          <p class="logo">Summit</p>
+          <p class="logo-subtitle">Review Complete</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="email-content">
+          <p class="greeting">
+            Hi
+            <?= studentName ?>,
+          </p>
+
+          <p class="intro-text">
+            Your advisor has reviewed your work. Please take a look and make any
+            necessary changes:
+          </p>
+
+          <!-- Review Details Card -->
+          <div class="review-card">
+            <div class="review-header">
+              <svg class="review-icon" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fill-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+              Reviewed
+            </div>
+
+            <div class="task-title">
+              <p class="task-name"><?= taskTitle ?></p>
+              <? if (hasLink) { ?>
+              <a href="<?= documentLink ?>" class="document-link"
+                >View Document</a
+              >
+              <? } ?>
+            </div>
+          </div>
+
+          <p class="closing">
+            If you have any questions about the feedback, please reach out to
+            your advisor.
+          </p>
+
+          <p class="signature">Thank you,</p>
+          <p class="signature-org">Summit Team</p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

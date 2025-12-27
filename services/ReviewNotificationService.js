@@ -68,13 +68,13 @@ const ReviewNotificationService = {
     // This is for supplemental essay review
     {
       sheetName: "ApplicationTracker", // Application tracking sheet
-      startRow: 14, // Only focus on actual schools 
+      startRow: 14, // Only focus on actual schools
       statusColumn: 38, // Column AL = Supplemental (A=1, B=2, C=3, D=4, E=5)
       titleColumn: 4, // Column D = application title/description
-      linkColumn: -1, // Special code to grab globals outside -1 = Home page, Supplemental Tracker 
+      linkColumn: -1, // Special code to grab globals outside -1 = Home page, Supplemental Tracker
       needsReviewValue: "needs review", // Lowercase for case-insensitive comparison
       hasLinks: true, // No document links
-    }
+    },
   ],
 
   /**
@@ -175,7 +175,8 @@ const ReviewNotificationService = {
 
           if (CONFIG.debugMode) {
             Logger.log(
-              `Opened spreadsheet for ${student.name
+              `Opened spreadsheet for ${
+                student.name
               }: ${studentSs.getName()} (ID: ${studentSs.getId()})`
             );
           }
@@ -189,7 +190,8 @@ const ReviewNotificationService = {
           for (const sheetConfig of this.STUDENT_SHEET_CONFIGS) {
             if (CONFIG.debugMode) {
               Logger.log(
-                `Looking for sheet: "${sheetConfig.sheetName
+                `Looking for sheet: "${
+                  sheetConfig.sheetName
                 }" in ${studentSs.getName()}`
               );
             }
@@ -257,7 +259,9 @@ const ReviewNotificationService = {
               if (sheetConfig.linkColumn === -1) {
                 // Go get home page supplemental link
                 const homeSheet = studentSs.getSheetByName("Home Page");
-                linkRange = homeSheet.getRange(this.GLOBAL_LINKS.SUPPLEMENTAL_ESSAY_DOC); // Fixed for supplemental links
+                linkRange = homeSheet.getRange(
+                  this.GLOBAL_LINKS.SUPPLEMENTAL_ESSAY_DOC
+                ); // Fixed for supplemental links
               } else {
                 linkRange = targetSheet.getRange(
                   sheetConfig.startRow,
@@ -287,7 +291,8 @@ const ReviewNotificationService = {
                 if (consecutiveEmptyRows >= MAX_CONSECUTIVE_EMPTY) {
                   if (CONFIG.debugMode) {
                     Logger.log(
-                      `  Stopping early at row ${sheetConfig.startRow + rowIdx
+                      `  Stopping early at row ${
+                        sheetConfig.startRow + rowIdx
                       } after ${MAX_CONSECUTIVE_EMPTY} consecutive empty rows`
                     );
                   }
@@ -302,7 +307,7 @@ const ReviewNotificationService = {
               if (
                 status &&
                 status.toString().trim().toLowerCase() ===
-                sheetConfig.needsReviewValue
+                  sheetConfig.needsReviewValue
               ) {
                 needsReviewCount++;
                 if (!firstNeedsReviewRow && title) {
@@ -318,7 +323,8 @@ const ReviewNotificationService = {
               // Only log first 5 rows to avoid spam
               if (CONFIG.debugMode && rowIdx < 5) {
                 Logger.log(
-                  `    Row ${sheetConfig.startRow + rowIdx
+                  `    Row ${
+                    sheetConfig.startRow + rowIdx
                   }: Status="${status}", Title="${title}"`
                 );
               }
@@ -327,13 +333,14 @@ const ReviewNotificationService = {
               if (
                 !status ||
                 status.toString().trim().toLowerCase() !==
-                sheetConfig.needsReviewValue
+                  sheetConfig.needsReviewValue
               ) {
                 if (CONFIG.debugMode && status && rowIdx < 5) {
                   Logger.log(
                     `      Skipping: status="${status
                       .toString()
-                      .trim()}" doesn't match "${sheetConfig.needsReviewValue
+                      .trim()}" doesn't match "${
+                      sheetConfig.needsReviewValue
                     }" (case-insensitive)`
                   );
                 }
@@ -398,7 +405,8 @@ const ReviewNotificationService = {
 
               if (CONFIG.debugMode) {
                 Logger.log(
-                  `Added review request for ${student.name} - "${taskTitle}" (${sheetConfig.sheetName
+                  `Added review request for ${student.name} - "${taskTitle}" (${
+                    sheetConfig.sheetName
                   })${taskLink ? " (link: " + taskLink + ")" : ""}`
                 );
               }
@@ -670,6 +678,7 @@ const ReviewNotificationService = {
 
   /**
    * Sends a notification email to an advisor about pending review requests.
+   * Uses HTML template for professional formatting.
    * @private
    * @param {string} advisorName - Name of the advisor
    * @param {Array<Object>} requests - Review requests for this advisor
@@ -686,36 +695,34 @@ const ReviewNotificationService = {
         };
       }
 
-      // Build email content with grouped requests
-      const requestList = requests
-        .map((r) => {
-          const timestamp = this._formatTimestamp(r.timestamp);
-          // Only show link line if there's actually a link
-          const link =
-            r.notes && r.notes.trim() !== "" ? `\n  Link: ${r.notes}` : "";
-          return `• ${r.studentName} - ${r.reviewType}\n  Submitted: ${timestamp}${link}`;
-        })
-        .join("\n\n");
+      // Format timestamps for template
+      const formattedRequests = requests.map((r) => ({
+        studentName: r.studentName,
+        reviewType: r.reviewType,
+        timestamp: this._formatTimestamp(r.timestamp),
+        notes: r.notes || "",
+      }));
 
-      const subject = `${requests.length} Task${requests.length > 1 ? "s" : ""
-        } Need${requests.length === 1 ? "s" : ""} Review - Summit CRM`;
+      // Create HTML email from template
+      const template = HtmlService.createTemplateFromFile(
+        "ui/templates/InboundReviewTemplate"
+      );
+      template.advisorName = advisorName;
+      template.requestCount = requests.length;
+      template.requests = formattedRequests;
 
-      const body = `Hi ${advisorName},
+      // Evaluate template to get HTML content
+      const htmlBody = template.evaluate().getContent();
 
-The following task${requests.length > 1 ? "s need" : " needs"} review:
-
-${requestList}
-
-You can access each student's spreadsheet from the Student Data sheet.
-
-—
-Summit CRM Automated Notification`;
+      const subject = `${requests.length} Task${
+        requests.length > 1 ? "s" : ""
+      } Need${requests.length === 1 ? "s" : ""} Review - Summit`;
 
       MailApp.sendEmail({
         // to: advisorEmail,
         to: "luke.waehner@gmail.com",
         subject: subject,
-        body: body,
+        htmlBody: htmlBody,
         name: "Summit CRM",
       });
 

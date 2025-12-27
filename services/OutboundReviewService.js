@@ -639,7 +639,7 @@ const OutboundReviewService = {
 
   /**
    * Sends a notification email to a student about their reviewed work.
-   * Option B: Simple notification without feedback text in email.
+   * Uses HTML template for professional formatting.
    * @private
    * @param {Object} review - Review object with student info
    * @returns {Object} Result object
@@ -653,35 +653,26 @@ const OutboundReviewService = {
         };
       }
 
-      // Build email content - Option B: Just notification, no feedback
-      let reviewList = "";
+      // Create HTML email from template
+      const template = HtmlService.createTemplateFromFile(
+        "ui/templates/OutboundReviewTemplate"
+      );
+      template.studentName = review.studentName;
+      template.taskTitle = review.taskTitle;
+      template.hasLink =
+        review.documentLink && review.documentLink.trim() !== "";
+      template.documentLink = review.documentLink || "";
 
-      if (review.documentLink && review.documentLink.trim() !== "") {
-        // Has document link
-        reviewList = `Task: ${review.taskTitle}\nDocument Link: ${review.documentLink}`;
-      } else {
-        // No document link (ApplicationTracker)
-        reviewList = `Application: ${review.taskTitle}`;
-      }
+      // Evaluate template to get HTML content
+      const htmlBody = template.evaluate().getContent();
 
-      const subject = `Your Submission Has Been Reviewed - Summit CRM`;
-
-      const body = `Hi ${review.studentName},
-
-Your advisor has reviewed your work, please review and make any necessary changes:
-
-${reviewList}
-
-—
-If you have questions, please reach out to your advisor.
-
-Summit CRM Automated Notification`;
+      const subject = `Your Submission Has Been Reviewed - Summit`;
 
       MailApp.sendEmail({
         // to: review.studentEmail,
         to: "luke.waehner@gmail.com", // TEST MODE - change to review.studentEmail for production
         subject: subject,
-        body: body,
+        htmlBody: htmlBody,
         name: "Summit CRM",
       });
 
