@@ -7,3 +7,4 @@ function add(a, b) { return a + b; }
 console.log(String(add(2, 3)));
 const x = add(3, 4);
 console.log(String(add(5, 6)));
+console.log(3);
