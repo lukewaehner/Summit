@@ -21,14 +21,29 @@ const meetingHelpers = {
   getMeetingTimestamp(meeting, now) {
     // Convert meeting date to Date object if it's not already
     // This handles both Date objects and string dates from the spreadsheet
-    const d =
-      meeting.date instanceof Date
-        ? meeting.date
-        : new Date(meeting.date || now);
+    let d;
 
-    // Return Unix timestamp in milliseconds for precise sorting
-    // NOTE: Currently only uses date; time could be incorporated here in the future
-    return d.getTime();
+    if (meeting.date instanceof Date) {
+      d = meeting.date;
+    } else if (meeting.date) {
+      d = new Date(meeting.date);
+    } else {
+      d = now;
+    }
+
+    // Check if the date is valid
+    const timestamp = d.getTime();
+    if (isNaN(timestamp)) {
+      // Invalid date - return current time as fallback
+      if (CONFIG.debugMode) {
+        Logger.log(
+          `     [getMeetingTimestamp] WARNING: Invalid date "${meeting.date}", using now`
+        );
+      }
+      return now.getTime();
+    }
+
+    return timestamp;
   },
 
   /**
@@ -42,7 +57,7 @@ const meetingHelpers = {
    *
    * @param {Meeting[]} meetings - Array of meeting objects to categorize
    * @param {Date} now - The current date/time used to determine past vs future
-   * @param {string} _studentName - Student name (unused, reserved for future use)
+   * @param {string} studentName - Student name (used for verbose logging)
    * @returns {any[][]} Array of rows, each containing [status, date, time] for the sheet
    *
    * @example
@@ -53,10 +68,41 @@ const meetingHelpers = {
    * const rows = meetingHelpers.buildMeetingRows(meetings, new Date('2024-01-15'));
    * // Returns: [['Current Meeting', Date, '10:00 AM'], ['Next Meeting', Date, '2:00 PM']]
    */
-  buildMeetingRows(meetings, now, _studentName) {
+  buildMeetingRows(meetings, now, studentName) {
+    const verbose = CONFIG.debugMode;
+
     // Handle empty or null meeting arrays
     if (!meetings || meetings.length === 0) {
+      if (verbose) {
+        Logger.log(
+          `     [buildMeetingRows] No meetings provided for ${studentName}`
+        );
+      }
       return [];
+    }
+
+    if (verbose) {
+      Logger.log(
+        `     [buildMeetingRows] Processing ${meetings.length} meetings for ${studentName}`
+      );
+      Logger.log(`     [buildMeetingRows] Current time: ${now.toISOString()}`);
+      // Log first meeting to debug date format
+      const firstMeeting = meetings[0];
+      Logger.log(`     [buildMeetingRows] First meeting sample:`);
+      Logger.log(`       - name: ${firstMeeting.name}`);
+      Logger.log(
+        `       - date: ${
+          firstMeeting.date
+        } (type: ${typeof firstMeeting.date})`
+      );
+      Logger.log(
+        `       - time: ${
+          firstMeeting.time
+        } (type: ${typeof firstMeeting.time})`
+      );
+      if (firstMeeting.date instanceof Date) {
+        Logger.log(`       - date.getTime(): ${firstMeeting.date.getTime()}`);
+      }
     }
 
     // Augment each meeting with its computed timestamp for efficient sorting
@@ -69,6 +115,16 @@ const meetingHelpers = {
     const nowTs = now.getTime();
     const past = withTs.filter((x) => x.ts < nowTs);
     const future = withTs.filter((x) => x.ts >= nowTs);
+
+    if (verbose) {
+      Logger.log(`     [buildMeetingRows] nowTs: ${nowTs}`);
+      Logger.log(
+        `     [buildMeetingRows] Past meetings: ${past.length}, Future meetings: ${future.length}`
+      );
+      if (withTs.length > 0) {
+        Logger.log(`     [buildMeetingRows] First timestamp: ${withTs[0].ts}`);
+      }
+    }
 
     // Sort both arrays chronologically (earliest to latest)
     past.sort((a, b) => a.ts - b.ts);
@@ -106,6 +162,12 @@ const meetingHelpers = {
           status: "Future Meeting",
         });
       }
+    }
+
+    if (verbose) {
+      Logger.log(
+        `     [buildMeetingRows] Ordered meetings to write: ${ordered.length}`
+      );
     }
 
     // Convert to sheet row format: [status, date, time]

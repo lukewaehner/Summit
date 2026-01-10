@@ -35,30 +35,41 @@ const MeetingDataService = {
       return [];
     }
 
-    const data = meetingDataSheet.getRange(1, 1, lastRow, 5).getValues();
+    // Read 6 columns: A=name, B=email, C=advisor, D=description, E=date, F=time
+    const data = meetingDataSheet.getRange(1, 1, lastRow, 6).getValues();
     /** @type {Meeting[]} */
     const meetings = [];
+
+    // Log headers to debug column mapping
+    if (CONFIG.debugMode && data.length > 0) {
+      const headers = data[0];
+      Logger.log("Meeting Data columns:");
+      Logger.log(
+        `  A: "${headers[0]}", B: "${headers[1]}", C: "${headers[2]}", D: "${headers[3]}", E: "${headers[4]}", F: "${headers[5]}"`
+      );
+    }
 
     for (let i = 1; i < data.length; i++) {
       // skip header
       const row = data[i];
-      const [name, advisor, description, date, time] = row;
+      // Columns: A=name, B=email, C=advisor, D=meeting title, E=date, F=time
+      const [name, email, advisor, description, date, time] = row;
 
       // Early break on first fully empty row
       if (row.every((cell) => cell === "" || cell === null)) {
         break;
       }
 
-      // Timezone adjustment needed
+      // Timezone adjustment needed for time column
       let adjustedTime = time;
       if (time instanceof Date) {
         adjustedTime = new Date(time.getTime() + 60 * 60 * 1000); // Add 1 hour in milliseconds
       }
 
-      // Push all
+      // Create Meeting with correct column mapping
       const meeting = new Meeting(
         name,
-        "",
+        email || "",
         date,
         adjustedTime,
         advisor,

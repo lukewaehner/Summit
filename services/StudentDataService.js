@@ -79,12 +79,33 @@ const StudentDataService = {
    * // Returns: [{ date: "Nov 24, 2025", time: "9:00 AM", datetime: "Nov 24, 2025 (9:00 AM)", notes: "..." }, ...]
    */
   getStudentMeetings(url) {
+    Logger.log("StudentDataService.getStudentMeetings called");
+    Logger.log("URL: " + url);
+
+    // Validate URL
+    if (!url) {
+      Logger.log("ERROR: No URL provided");
+      return [];
+    }
+
     // Open the student's individual spreadsheet using the provided URL
-    const studentSheet = spreadsheetHelperFunctions
-      .openSpreadsheetWithUrl(url)
-      .getSheetByName("Meetings");
+    Logger.log("Opening spreadsheet...");
+    const studentSs = spreadsheetHelperFunctions.openSpreadsheetWithUrl(url);
+    if (!studentSs) {
+      Logger.log("ERROR: Failed to open spreadsheet");
+      return [];
+    }
+    Logger.log("Spreadsheet opened: " + studentSs.getName());
+
+    const studentSheet = studentSs.getSheetByName("Meetings");
+    if (!studentSheet) {
+      Logger.log("ERROR: No 'Meetings' sheet found");
+      return [];
+    }
+    Logger.log("Found Meetings sheet");
 
     const lastRow = studentSheet.getLastRow();
+    Logger.log("Last row: " + lastRow);
     // Early exit if no data (header only or empty sheet)
     if (lastRow < 2) return [];
 

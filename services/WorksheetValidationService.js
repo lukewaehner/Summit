@@ -1,8 +1,8 @@
 /**
  * Service for validating and renaming worksheet files in student spreadsheets.
  * Two-phase architecture:
- * 1. collectWorksheetIssues() - Scans Tasks sheets for improperly named files, writes to WorksheetQueue (slow, runs hourly)
- * 2. processWorksheetIssues() - Reads queue, copies/renames/moves files (fast, runs every 10 min)
+ * 1. collectTasksWorksheets() - Scans Tasks sheets for improperly named files, writes to WorksheetQueue (slow, runs hourly)
+ * 2. processTasksWorksheets() - Reads queue, copies/renames/moves files (fast, runs every 10 min)
  *
  * Validation Rule: Worksheet filenames must start with the student's last name.
  * If not, the file is copied, renamed with "{LastName} - {OriginalName}", moved to shared drive, and shared with student.
@@ -125,12 +125,13 @@ const WorksheetValidationService = {
    * @param {boolean} options.resetState - Force restart from beginning (default: false)
    * @returns {Object} Collection results with counts and timing
    */
-  collectWorksheetIssues(options) {
+  collectTasksWorksheets(options) {
     const startTime = Date.now();
     const opts = options || { batchSize: 30, resetState: false };
     const batchSize = typeof opts.batchSize === "number" ? opts.batchSize : 30;
     const resetState =
       typeof opts.resetState === "boolean" ? opts.resetState : false;
+    const verbose = CONFIG.debugMode;
 
     const results = {
       scanned: 0,
@@ -140,6 +141,13 @@ const WorksheetValidationService = {
       executionTime: 0,
       completed: false,
     };
+
+    if (verbose) {
+      Logger.log("═══════════════════════════════════════════════════════════");
+      Logger.log("  WORKSHEET VALIDATION - PHASE 1: COLLECTION");
+      Logger.log("═══════════════════════════════════════════════════════════");
+      Logger.log(`Batch size: ${batchSize}, Reset state: ${resetState}`);
+    }
 
     try {
       // Get script properties for state persistence
@@ -165,14 +173,22 @@ const WorksheetValidationService = {
       // Get all students
       const allStudents = StudentDataService.getAllStudents();
 
-      if (CONFIG.debugMode) {
-        Logger.log(
-          `Starting worksheet collection from index ${lastProcessedIndex} of ${allStudents.length} students`
-        );
+      if (verbose) {
+        Logger.log(`Total students: ${allStudents.length}`);
+        Logger.log(`Starting from index: ${lastProcessedIndex}`);
       }
 
       // Get existing queue items for duplicate checking
       const existingItems = this._getExistingQueueItems(worksheetQueue);
+
+      if (verbose) {
+        Logger.log(
+          `Existing queue items (pending/processed): ${existingItems.size}`
+        );
+        Logger.log(
+          "───────────────────────────────────────────────────────────"
+        );
+      }
 
       // Determine batch end
       const endIndex = Math.min(
@@ -185,7 +201,7 @@ const WorksheetValidationService = {
         // Check execution time before processing each student
         if (Date.now() - startTime > this._MAX_EXECUTION_TIME) {
           Logger.log(
-            `Approaching execution time limit. Processed ${results.scanned} students. Will resume next run.`
+            `WARNING: Approaching execution time limit. Processed ${results.scanned} students. Will resume next run.`
           );
           scriptProps.setProperty("lastProcessedWorksheetIndex", i.toString());
           results.executionTime = Date.now() - startTime;
@@ -195,17 +211,26 @@ const WorksheetValidationService = {
         const student = allStudents[i];
         results.scanned++;
 
+        if (verbose) {
+          Logger.log(
+            `[${i + 1}/${allStudents.length}] Scanning: ${student.name}`
+          );
+        }
+
         try {
           const issuesFound = this._scanStudentWorksheets(
             student,
             worksheetQueue,
-            existingItems
+            existingItems,
+            verbose
           );
           results.issuesFound += issuesFound;
+
+          if (verbose && issuesFound > 0) {
+            Logger.log(`  └─ Found ${issuesFound} issue(s)`);
+          }
         } catch (error) {
-          Logger.log(
-            `Error scanning worksheets for ${student.name}: ${error.toString()}`
-          );
+          Logger.log(`  └─ ERROR: ${error.toString()}`);
           results.errors.push({
             student: student.name,
             error: error.message,
@@ -218,30 +243,48 @@ const WorksheetValidationService = {
       if (endIndex >= allStudents.length) {
         results.completed = true;
         scriptProps.setProperty("lastProcessedWorksheetIndex", "0");
-        if (CONFIG.debugMode) {
-          Logger.log("Completed full worksheet scan of all students");
+        if (verbose) {
+          Logger.log(
+            "───────────────────────────────────────────────────────────"
+          );
+          Logger.log("SUCCESS: Completed full worksheet scan of all students");
         }
       } else {
         scriptProps.setProperty(
           "lastProcessedWorksheetIndex",
           endIndex.toString()
         );
-        if (CONFIG.debugMode) {
+        if (verbose) {
           Logger.log(
-            `Batch complete. Will resume from index ${endIndex} on next run`
+            "───────────────────────────────────────────────────────────"
+          );
+          Logger.log(
+            `INFO: Batch complete. Will resume from index ${endIndex} on next run`
           );
         }
       }
 
       results.executionTime = Date.now() - startTime;
 
-      if (CONFIG.debugMode) {
+      if (verbose) {
         Logger.log(
-          `Collection complete: Scanned ${results.scanned}, Issues found: ${results.issuesFound}, Time: ${results.executionTime}ms`
+          "═══════════════════════════════════════════════════════════"
+        );
+        Logger.log("  COLLECTION SUMMARY");
+        Logger.log(
+          "═══════════════════════════════════════════════════════════"
+        );
+        Logger.log(`Students scanned: ${results.scanned}`);
+        Logger.log(`Issues found: ${results.issuesFound}`);
+        Logger.log(`Errors: ${results.errors.length}`);
+        Logger.log(`Execution time: ${results.executionTime}ms`);
+        Logger.log(`Completed: ${results.completed}`);
+        Logger.log(
+          "═══════════════════════════════════════════════════════════"
         );
       }
     } catch (error) {
-      Logger.log("Error in collectWorksheetIssues: " + error.toString());
+      Logger.log("ERROR: " + error.toString());
       results.errors.push({
         error: "Fatal error: " + error.message,
       });
@@ -279,8 +322,12 @@ const WorksheetValidationService = {
   /**
    * Scans a single student's Tasks sheet for worksheet issues.
    * @private
+   * @param {Object} student - Student object with name, email, url
+   * @param {Sheet} worksheetQueue - The queue sheet to write to
+   * @param {Set} existingItems - Set of existing queue items for dedup
+   * @param {boolean} verbose - Whether to log verbose output
    */
-  _scanStudentWorksheets(student, worksheetQueue, existingItems) {
+  _scanStudentWorksheets(student, worksheetQueue, existingItems, verbose) {
     let issuesFound = 0;
 
     // Open student's spreadsheet
@@ -294,8 +341,8 @@ const WorksheetValidationService = {
       this.TASK_SHEET_CONFIG.sheetName
     );
     if (!tasksSheet) {
-      if (CONFIG.debugMode) {
-        Logger.log(`No Tasks sheet found for ${student.name}`);
+      if (verbose) {
+        Logger.log(`  └─ ⚠️ No Tasks sheet found`);
       }
       return 0;
     }
@@ -317,19 +364,24 @@ const WorksheetValidationService = {
       targetFolderId = this._extractFolderId(folderUrl);
     }
 
-    if (!targetFolderId) {
-      Logger.log(
-        `Warning: No target folder found in Home Page C6 for ${student.name}`
-      );
+    if (!targetFolderId && verbose) {
+      Logger.log(`  └─ WARNING: No target folder in Home Page C6`);
     }
 
     // Extract last name
     const lastName = this._extractLastName(student.name);
 
+    if (verbose) {
+      Logger.log(`  └─ Last name: "${lastName}"`);
+    }
+
     // Get worksheet links from column H, starting at row 3
     const lastRow = tasksSheet.getLastRow();
     if (lastRow < this.TASK_SHEET_CONFIG.startRow) {
-      return 0; // No data rows
+      if (verbose) {
+        Logger.log(`  └─ No data rows in Tasks sheet`);
+      }
+      return 0;
     }
 
     const numRows = lastRow - this.TASK_SHEET_CONFIG.startRow + 1;
@@ -340,6 +392,14 @@ const WorksheetValidationService = {
       1
     );
     const richTextValues = linkRange.getRichTextValues();
+
+    if (verbose) {
+      Logger.log(`  └─ Scanning ${numRows} rows in column H`);
+    }
+
+    let filesChecked = 0;
+    let filesSkipped = 0;
+    let filesOk = 0;
 
     // Process each row
     for (let rowIdx = 0; rowIdx < numRows; rowIdx++) {
@@ -361,10 +421,13 @@ const WorksheetValidationService = {
       const fileId = this._extractFileId(fileUrl);
       if (!fileId) continue;
 
+      filesChecked++;
+
       // Check if already in queue
       const actualRow = this.TASK_SHEET_CONFIG.startRow + rowIdx;
       const uniqueKey = `${student.name}|${fileId}|${actualRow}`;
       if (existingItems.has(uniqueKey)) {
+        filesSkipped++;
         continue; // Skip duplicates
       }
 
@@ -375,6 +438,7 @@ const WorksheetValidationService = {
 
         // Check if filename starts with last name (case-insensitive)
         if (fileName.toLowerCase().startsWith(lastName.toLowerCase())) {
+          filesOk++;
           continue; // Already properly named
         }
 
@@ -403,19 +467,25 @@ const WorksheetValidationService = {
         issuesFound++;
         existingItems.add(uniqueKey); // Add to set to prevent duplicates within same batch
 
-        if (CONFIG.debugMode) {
+        if (verbose) {
           Logger.log(
-            `Found issue: ${student.name} - "${fileName}" doesn't start with "${lastName}"`
+            `     ├─ INFO: Row ${actualRow}: "${fileName}" → needs "${lastName} - ${fileName}"`
           );
         }
       } catch (error) {
         // File might not be accessible
-        if (CONFIG.debugMode) {
+        if (verbose) {
           Logger.log(
-            `Could not access file ${fileId} for ${student.name}: ${error.message}`
+            `     ├─ WARNING: Row ${actualRow}: Could not access file (${error.message})`
           );
         }
       }
+    }
+
+    if (verbose && filesChecked > 0) {
+      Logger.log(
+        `  └─ Files: ${filesChecked} checked, ${filesOk} OK, ${filesSkipped} skipped (in queue), ${issuesFound} need rename`
+      );
     }
 
     return issuesFound;
@@ -427,14 +497,21 @@ const WorksheetValidationService = {
    *
    * @returns {Object} Processing results with counts and timing
    */
-  processWorksheetIssues() {
+  processTasksWorksheets() {
     const startTime = Date.now();
+    const verbose = CONFIG.debugMode;
     const results = {
       processed: 0,
       success: 0,
       errors: [],
       executionTime: 0,
     };
+
+    if (verbose) {
+      Logger.log("═══════════════════════════════════════════════════════════");
+      Logger.log("  WORKSHEET VALIDATION - PHASE 2: PROCESSING");
+      Logger.log("═══════════════════════════════════════════════════════════");
+    }
 
     try {
       // Open WorksheetQueue sheet
@@ -449,8 +526,11 @@ const WorksheetValidationService = {
 
       const lastRow = worksheetQueue.getLastRow();
       if (lastRow < 2) {
-        if (CONFIG.debugMode) {
-          Logger.log("No worksheet issues in queue");
+        if (verbose) {
+          Logger.log("INFO: No worksheet issues in queue");
+          Logger.log(
+            "═══════════════════════════════════════════════════════════"
+          );
         }
         return results;
       }
@@ -458,11 +538,26 @@ const WorksheetValidationService = {
       // Read all rows at once
       const data = worksheetQueue.getRange(2, 1, lastRow - 1, 13).getValues();
 
+      // Count pending items
+      const pendingCount = data.filter(
+        (row) => row[this.COLUMNS.STATUS] === this.STATUS.PENDING
+      ).length;
+
+      if (verbose) {
+        Logger.log(`Total queue items: ${data.length}`);
+        Logger.log(`Pending items to process: ${pendingCount}`);
+        Logger.log(
+          "───────────────────────────────────────────────────────────"
+        );
+      }
+
       // Process pending items
       for (let i = 0; i < data.length; i++) {
         // Check execution time
         if (Date.now() - startTime > this._MAX_EXECUTION_TIME) {
-          Logger.log("Approaching execution time limit, stopping early");
+          Logger.log(
+            "WARNING: Approaching execution time limit, stopping early"
+          );
           break;
         }
 
@@ -473,10 +568,18 @@ const WorksheetValidationService = {
         if (status !== this.STATUS.PENDING) continue;
 
         const actualRow = i + 2; // Adjust for header and 0-based index
+        const studentName = row[this.COLUMNS.STUDENT_NAME];
+        const fileName = row[this.COLUMNS.ORIGINAL_FILE_NAME];
         results.processed++;
 
+        if (verbose) {
+          Logger.log(
+            `[${results.processed}/${pendingCount}] Processing: ${studentName} - "${fileName}"`
+          );
+        }
+
         try {
-          const result = this._processWorksheetItem(row);
+          const result = this._processWorksheetItem(row, verbose);
 
           if (result.success) {
             // Update queue row with success
@@ -486,38 +589,70 @@ const WorksheetValidationService = {
                 [this.STATUS.PROCESSED, new Date(), result.newFileUrl, ""],
               ]);
             results.success++;
+
+            if (verbose) {
+              Logger.log(`  └─ SUCCESS: ${result.newFileUrl}`);
+            }
           } else {
             // Update queue row with error
             worksheetQueue
               .getRange(actualRow, 10, 1, 4)
               .setValues([[this.STATUS.ERROR, new Date(), "", result.error]]);
             results.errors.push({
-              student: row[this.COLUMNS.STUDENT_NAME],
-              file: row[this.COLUMNS.ORIGINAL_FILE_NAME],
+              student: studentName,
+              file: fileName,
               error: result.error,
             });
+
+            if (verbose) {
+              Logger.log(`  └─ ERROR: ${result.error}`);
+            }
           }
         } catch (error) {
           worksheetQueue
             .getRange(actualRow, 10, 1, 4)
             .setValues([[this.STATUS.ERROR, new Date(), "", error.message]]);
           results.errors.push({
-            student: row[this.COLUMNS.STUDENT_NAME],
-            file: row[this.COLUMNS.ORIGINAL_FILE_NAME],
+            student: studentName,
+            file: fileName,
             error: error.message,
           });
+
+          if (verbose) {
+            Logger.log(`  └─ EXCEPTION: ${error.message}`);
+          }
         }
       }
 
       results.executionTime = Date.now() - startTime;
 
-      if (CONFIG.debugMode) {
+      if (verbose) {
         Logger.log(
-          `Processing complete: ${results.processed} processed, ${results.success} successful, ${results.errors.length} errors, Time: ${results.executionTime}ms`
+          "═══════════════════════════════════════════════════════════"
+        );
+        Logger.log("  PROCESSING SUMMARY");
+        Logger.log(
+          "═══════════════════════════════════════════════════════════"
+        );
+        Logger.log(`Items processed: ${results.processed}`);
+        Logger.log(`Successful: ${results.success}`);
+        Logger.log(`Errors: ${results.errors.length}`);
+        Logger.log(`Execution time: ${results.executionTime}ms`);
+        if (results.errors.length > 0) {
+          Logger.log(
+            "───────────────────────────────────────────────────────────"
+          );
+          Logger.log("Error details:");
+          results.errors.forEach((e, idx) => {
+            Logger.log(`  ${idx + 1}. ${e.student} - ${e.file}: ${e.error}`);
+          });
+        }
+        Logger.log(
+          "═══════════════════════════════════════════════════════════"
         );
       }
     } catch (error) {
-      Logger.log("Error in processWorksheetIssues: " + error.toString());
+      Logger.log("ERROR: " + error.toString());
       results.errors.push({
         error: "Fatal error: " + error.message,
       });
@@ -530,9 +665,10 @@ const WorksheetValidationService = {
    * Processes a single worksheet item from the queue.
    * @private
    * @param {Array} row - The queue row data
+   * @param {boolean} verbose - Whether to log verbose output
    * @returns {Object} Result with success status and newFileUrl or error
    */
-  _processWorksheetItem(row) {
+  _processWorksheetItem(row, verbose) {
     const studentName = row[this.COLUMNS.STUDENT_NAME];
     const studentEmail = row[this.COLUMNS.STUDENT_EMAIL];
     const lastName = row[this.COLUMNS.LAST_NAME];
@@ -552,34 +688,51 @@ const WorksheetValidationService = {
     }
 
     // Step 1: Get the original file
+    if (verbose) {
+      Logger.log(`  ├─ Step 1: Getting original file...`);
+    }
     const originalFile = DriveApp.getFileById(originalFileId);
 
     // Step 2: Create new filename with LastName prefix
     const newFileName = `${lastName} - ${originalFileName}`;
+    if (verbose) {
+      Logger.log(`  ├─ Step 2: New filename: "${newFileName}"`);
+    }
 
     // Step 3: Get target folder
+    if (verbose) {
+      Logger.log(`  ├─ Step 3: Getting target folder...`);
+    }
     const targetFolder = DriveApp.getFolderById(targetFolderId);
 
     // Step 4: Copy file to target folder with new name
+    if (verbose) {
+      Logger.log(`  ├─ Step 4: Copying file to target folder...`);
+    }
     const newFile = originalFile.makeCopy(newFileName, targetFolder);
     const newFileUrl = newFile.getUrl();
 
     // Step 5: Share with student if email exists
     if (studentEmail) {
+      if (verbose) {
+        Logger.log(`  ├─ Step 5: Sharing with ${studentEmail}...`);
+      }
       try {
         newFile.addEditor(studentEmail);
-        if (CONFIG.debugMode) {
-          Logger.log(`Shared "${newFileName}" with ${studentEmail}`);
-        }
       } catch (shareError) {
-        Logger.log(
-          `Warning: Could not share with ${studentEmail}: ${shareError.message}`
-        );
+        if (verbose) {
+          Logger.log(`  │  └─ WARNING: Could not share: ${shareError.message}`);
+        }
         // Continue even if sharing fails
       }
+    } else if (verbose) {
+      Logger.log(`  ├─ Step 5: No student email, skipping share`);
     }
 
     // Step 6: Update the cell in student's spreadsheet with new URL
+    if (verbose) {
+      Logger.log(`  ├─ Step 6: Updating spreadsheet cell H${cellRow}...`);
+    }
     try {
       const studentSs = SpreadsheetApp.openById(studentSpreadsheetId);
       const tasksSheet = studentSs.getSheetByName(
@@ -599,24 +752,14 @@ const WorksheetValidationService = {
           .build();
 
         cell.setRichTextValue(richText);
-
-        if (CONFIG.debugMode) {
-          Logger.log(
-            `Updated cell H${cellRow} for ${studentName} with new file link`
-          );
-        }
       }
     } catch (updateError) {
-      Logger.log(
-        `Warning: Could not update spreadsheet cell: ${updateError.message}`
-      );
+      if (verbose) {
+        Logger.log(
+          `  │  └─ WARNING: Could not update cell: ${updateError.message}`
+        );
+      }
       // File was created, so we still return success
-    }
-
-    if (CONFIG.debugMode) {
-      Logger.log(
-        `Successfully processed: "${originalFileName}" -> "${newFileName}" for ${studentName}`
-      );
     }
 
     return {

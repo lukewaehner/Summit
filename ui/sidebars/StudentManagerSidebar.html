@@ -218,18 +218,30 @@
           '<div class="loading"><div class="spinner"></div><div>Loading meetings...</div></div>';
 
         // Fetch meetings for this student from their spreadsheet
-        // Limit to 50 most recent meetings for faster loading (5 minutes limit = 300000ms)
+        console.log("Fetching meetings for:", student.name, student.url);
         google.script.run
           .withSuccessHandler(function (meetings) {
-            // Open the meeting notes sidebar with student name, email, and meetings data
-            google.script.run.openStudentMeetingSidebar({
-              studentName: student.name,
-              studentEmail: student.email || "",
-              meetings: meetings,
-            });
+            console.log("Got meetings:", meetings ? meetings.length : 0);
+            // Open the meetings modal - it will replace this one
+            google.script.run
+              .withSuccessHandler(function () {
+                console.log("Meetings modal opened");
+              })
+              .withFailureHandler(function (err) {
+                console.error("Failed to open meetings modal:", err);
+                displayError(err);
+              })
+              .openStudentMeetingSidebar({
+                studentName: student.name,
+                studentEmail: student.email || "",
+                meetings: meetings || [],
+              });
           })
-          .withFailureHandler(displayError)
-          .getStudentMeetings(student.url, 50); // Limit to 50 recent meetings
+          .withFailureHandler(function (err) {
+            console.error("Failed to get meetings:", err);
+            displayError(err);
+          })
+          .getStudentMeetings(student.url, 50);
       }
 
       /**

@@ -5,7 +5,7 @@
  */
 
 /**
- * Opens the main Student Manager sidebar.
+ * Opens the main Student Manager modal dialog.
  * This is the primary entry point for the Summit CRM interface.
  * Displays a list of all students that can be clicked to view their meetings.
  *
@@ -18,9 +18,13 @@
  * // Typically called via the UI menu, or programmatically:
  * openSidebar();
  */
-function openSidebar() {
-  var html = getStudentManagerSidebarHtml();
-  SpreadsheetApp.getUi().showSidebar(html);
+function openSidebar_impl() {
+  var html = HtmlService.createHtmlOutputFromFile(
+    "ui/sidebars/StudentManagerSidebar"
+  )
+    .setWidth(400)
+    .setHeight(500);
+  SpreadsheetApp.getUi().showModalDialog(html, "Summit - Students");
 }
 
 /**
@@ -44,16 +48,37 @@ function openSidebar() {
  *   ]
  * });
  */
-function openStudentMeetingSidebar(data) {
-  var template = HtmlService.createTemplateFromFile(
-    "ui/sidebars/StudentMeetingNotesSidebar"
+function openStudentMeetingSidebar_impl(data) {
+  Logger.log("=== openStudentMeetingSidebar_impl called ===");
+  Logger.log("Student: " + (data ? data.studentName : "NO DATA"));
+  Logger.log(
+    "Meetings count: " +
+      (data && data.meetings ? data.meetings.length : "NO MEETINGS")
   );
 
-  // Pass student name, email, and meetings array to template
-  template.data = data; // { studentName: "...", studentEmail: "...", meetings: [...] }
+  try {
+    var template = HtmlService.createTemplateFromFile(
+      "ui/sidebars/StudentMeetingNotesSidebar"
+    );
 
-  var html = template.evaluate().setTitle("Student Meetings");
-  SpreadsheetApp.getUi().showSidebar(html);
+    // Pass student name, email, and meetings array to template
+    template.data = data || { studentName: "", studentEmail: "", meetings: [] };
+
+    Logger.log("Evaluating template...");
+    var html = template.evaluate().setWidth(500).setHeight(600);
+    Logger.log("Template evaluated successfully");
+
+    // Use modal dialog instead of sidebar
+    SpreadsheetApp.getUi().showModalDialog(
+      html,
+      "Meetings - " + (data.studentName || "Student")
+    );
+    Logger.log("Modal dialog shown");
+  } catch (e) {
+    Logger.log("ERROR in openStudentMeetingSidebar: " + e.message);
+    Logger.log("Stack: " + e.stack);
+    throw e;
+  }
 }
 
 /**

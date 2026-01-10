@@ -43,7 +43,9 @@ module.exports = [
         getStudentData: "writable",
         getStudentMeetings: "writable",
         openSidebar: "writable",
+        openSidebar_impl: "writable",
         openStudentMeetingSidebar: "writable",
+        openStudentMeetingSidebar_impl: "writable",
         getStudentManagerSidebarHtml: "writable",
         getStudentMeetingSidebarHtml: "writable",
         startMenu: "writable",
@@ -60,6 +62,16 @@ module.exports = [
         processOutboundReviews: "writable",
         setupOutboundQueue: "writable",
         debugOutboundNotifications: "writable",
+        // Worksheet Validation Functions
+        WorksheetValidationService: "writable",
+        collectTasksWorksheets: "writable",
+        processTasksWorksheets: "writable",
+        setupWorksheetQueue: "writable",
+        resetWorksheetCollectionState: "writable",
+        getWorksheetCollectionProgress: "writable",
+        // New Meeting/Student Data Functions
+        updateStudentDataSheet: "writable",
+        syncMeetingsToStudents: "writable",
       },
     },
     rules: {
@@ -69,7 +81,7 @@ module.exports = [
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern:
-            "^(CONFIG|Meeting|meetingHelpers|MeetingDataService|StudentDataService|EmailService|ReviewNotificationService|OutboundReviewService|SummitCacheService|loadMeetings|sendMeetingNotes|syncAllData|updateStudentDataSpreadhseet|grabAllMeetings|trackMeetingsToStudents|buildMeetingRowsForStudent|getMeetingTimestamp|spreadsheetHelperFunctions|getStudentData|getStudentMeetings|openSidebar|openStudentMeetingSidebar|getStudentManagerSidebarHtml|getStudentMeetingSidebarHtml|startMenu|getStudentDataCheck|sendMeetingNotesEmail|collectReviewRequests|processReviewRequests|markReviewAsCompleted|setupReviewQueue|collectOutboundReviews|processOutboundReviews|setupOutboundQueue|debugOutboundNotifications)$",
+            "^(CONFIG|Meeting|meetingHelpers|MeetingDataService|StudentDataService|EmailService|ReviewNotificationService|OutboundReviewService|SummitCacheService|WorksheetValidationService|loadMeetings|sendMeetingNotes|syncAllData|updateStudentDataSpreadhseet|updateStudentDataSheet|syncMeetingsToStudents|grabAllMeetings|trackMeetingsToStudents|buildMeetingRowsForStudent|getMeetingTimestamp|spreadsheetHelperFunctions|getStudentData|getStudentMeetings|openSidebar|openSidebar_impl|openStudentMeetingSidebar|openStudentMeetingSidebar_impl|getStudentManagerSidebarHtml|getStudentMeetingSidebarHtml|startMenu|getStudentDataCheck|sendMeetingNotesEmail|collectReviewRequests|processReviewRequests|markReviewAsCompleted|setupReviewQueue|collectOutboundReviews|processOutboundReviews|setupOutboundQueue|debugOutboundNotifications|collectTasksWorksheets|processTasksWorksheets|setupWorksheetQueue|resetWorksheetCollectionState|getWorksheetCollectionProgress)$",
         },
       ],
       // Allow redeclaration for Apps Script backwards compatibility
