@@ -21,8 +21,12 @@
  * startMenu();
  */
 function startMenu() {
-  SpreadsheetApp.getUi()
-    .createMenu("Summit")
+  var ui = SpreadsheetApp.getUi();
+  ui.createMenu("Summit")
     .addItem("Send Meeting Notes", "openSidebar")
+    .addSeparator()
+    .addItem("Run Inbound Reviews (Student → Advisor)", "runInboundReviews")
+    .addItem("Run Outbound Reviews (Advisor → Student)", "runOutboundReviews")
+    .addItem("Run Worksheet Validation", "runWorksheetValidation")
     .addToUi();
 }

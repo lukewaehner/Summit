@@ -180,12 +180,19 @@ function getStudentMeetings(url, limit) {
  *   "john.doe@example.com"
  * );
  */
-function sendMeetingNotesEmail(studentName, datetime, notes, recipientEmail) {
+function sendMeetingNotesEmail(
+  studentName,
+  datetime,
+  notes,
+  recipientEmail,
+  studentUrl
+) {
   return EmailService.sendMeetingNotes(
     studentName,
     datetime,
     notes,
-    recipientEmail
+    recipientEmail,
+    studentUrl
   );
 }
 
@@ -276,6 +283,50 @@ function markReviewAsCompleted(studentName) {
 
 function setupReviewQueue() {
   return ReviewNotificationService.setupReviewQueue();
+}
+
+/**
+ * Runs both collect and process for inbound review requests (Student → Advisor).
+ * Combines Phase 1 (collection) and Phase 2 (notification) into a single action.
+ * Useful for manual triggering from the menu.
+ *
+ * @returns {Object} Combined results from collect and process
+ */
+function runInboundReviews() {
+  Logger.log("=== Running Inbound Reviews (Collect + Process) ===");
+
+  const collectResults = ReviewNotificationService.collectReviewRequests(null);
+  Logger.log("Collection complete: " + JSON.stringify(collectResults));
+
+  const processResults = ReviewNotificationService.processReviewRequests();
+  Logger.log("Processing complete: " + JSON.stringify(processResults));
+
+  return {
+    collect: collectResults,
+    process: processResults,
+  };
+}
+
+/**
+ * Runs both collect and process for outbound reviews (Advisor → Student).
+ * Combines Phase 1 (collection) and Phase 2 (notification) into a single action.
+ * Useful for manual triggering from the menu.
+ *
+ * @returns {Object} Combined results from collect and process
+ */
+function runOutboundReviews() {
+  Logger.log("=== Running Outbound Reviews (Collect + Process) ===");
+
+  const collectResults = OutboundReviewService.collectOutboundReviews(null);
+  Logger.log("Collection complete: " + JSON.stringify(collectResults));
+
+  const processResults = OutboundReviewService.processOutboundReviews();
+  Logger.log("Processing complete: " + JSON.stringify(processResults));
+
+  return {
+    collect: collectResults,
+    process: processResults,
+  };
 }
 
 /**
@@ -377,4 +428,27 @@ function resetWorksheetCollectionState() {
  */
 function getWorksheetCollectionProgress() {
   return WorksheetValidationService.getCollectionProgress();
+}
+
+/**
+ * Runs both collect and process for worksheet validation.
+ * Combines Phase 1 (collection) and Phase 2 (processing) into a single action.
+ * Useful for manual triggering from the menu.
+ *
+ * @returns {Object} Combined results from collect and process
+ */
+function runWorksheetValidation() {
+  Logger.log("=== Running Worksheet Validation (Collect + Process) ===");
+
+  const collectResults =
+    WorksheetValidationService.collectTasksWorksheets(null);
+  Logger.log("Collection complete: " + JSON.stringify(collectResults));
+
+  const processResults = WorksheetValidationService.processTasksWorksheets();
+  Logger.log("Processing complete: " + JSON.stringify(processResults));
+
+  return {
+    collect: collectResults,
+    process: processResults,
+  };
 }

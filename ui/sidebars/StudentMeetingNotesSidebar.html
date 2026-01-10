@@ -3,6 +3,7 @@
   data = data || {};
   data.studentName = data.studentName || 'Unknown Student';
   data.studentEmail = data.studentEmail || '';
+  data.studentUrl = data.studentUrl || '';
   data.meetings = data.meetings || [];
 ?>
 <!DOCTYPE html>
@@ -168,6 +169,7 @@
       var meetingsData = <?!= JSON.stringify(data.meetings || []) ?>;
       var studentName = <?!= JSON.stringify(data.studentName || '') ?>;
       var studentEmail = <?!= JSON.stringify(data.studentEmail || '') ?>;
+      var studentUrl = <?!= JSON.stringify(data.studentUrl || '') ?>;
 
       function goBack() {
         // Open the students modal - it will replace this one
@@ -226,7 +228,7 @@
             }
             showError(meetingIndex, "Error: " + error.message);
           })
-          .sendMeetingNotesEmail(studentName, datetime, meeting.notes, email);
+          .sendMeetingNotesEmail(studentName, datetime, meeting.notes, email, studentUrl);
       }
 
        function formatDateTime(date, time) {
