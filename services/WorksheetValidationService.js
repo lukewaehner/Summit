@@ -323,7 +323,7 @@ const WorksheetValidationService = {
    * Scans a single student's Tasks sheet for worksheet issues.
    * @private
    * @param {Object} student - Student object with name, email, url
-   * @param {Sheet} worksheetQueue - The queue sheet to write to
+   * @param {Object} worksheetQueue - The queue sheet to write to
    * @param {Set} existingItems - Set of existing queue items for dedup
    * @param {boolean} verbose - Whether to log verbose output
    */
@@ -364,8 +364,13 @@ const WorksheetValidationService = {
       targetFolderId = this._extractFolderId(folderUrl);
     }
 
-    if (!targetFolderId && verbose) {
-      Logger.log(`  └─ WARNING: No target folder in Home Page C6`);
+    if (!targetFolderId) {
+      if (verbose) {
+        Logger.log(
+          `  └─ WARNING: No target folder in Home Page C6. Skipping student.`
+        );
+      }
+      return 0;
     }
 
     // Extract last name
@@ -435,9 +440,32 @@ const WorksheetValidationService = {
       try {
         const file = DriveApp.getFileById(fileId);
         const fileName = file.getName();
+        const lowerFileName = fileName.toLowerCase();
+        const lowerLastName = lastName.toLowerCase();
 
-        // Check if filename starts with last name (case-insensitive)
-        if (fileName.toLowerCase().startsWith(lastName.toLowerCase())) {
+        // Check if filename contains " - " and the part before it ends with the last name
+        // This handles "LastName - Original" AND "keep LastName - Original"
+        const separatorIndex = lowerFileName.indexOf(" - ");
+        let isCorrectlyNamed = false;
+
+        if (separatorIndex !== -1) {
+          // Extract the prefix part (before " - ")
+          const prefix = lowerFileName.substring(0, separatorIndex).trim();
+
+          // Check if the prefix ENDS with the last name
+          // This allows "Smith", "keep Smith", "FINAL Smith", etc.
+          if (prefix.endsWith(lowerLastName)) {
+            isCorrectlyNamed = true;
+          }
+        } else {
+          // Fallback: check if it starts with LastName directly (e.g. "Smith_Worksheet.pdf")
+          // though our standard format uses " - " separator
+          if (lowerFileName.startsWith(lowerLastName)) {
+            isCorrectlyNamed = true;
+          }
+        }
+
+        if (isCorrectlyNamed) {
           filesOk++;
           continue; // Already properly named
         }
@@ -689,6 +717,7 @@ const WorksheetValidationService = {
 
     // Step 1: Get the original file
     if (verbose) {
+      Logger.log(`  ├─ Processing student: ${studentName}`);
       Logger.log(`  ├─ Step 1: Getting original file...`);
     }
     const originalFile = DriveApp.getFileById(originalFileId);

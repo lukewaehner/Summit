@@ -669,11 +669,10 @@ const OutboundReviewService = {
       const subject = `Your Submission Has Been Reviewed - Summit`;
 
       MailApp.sendEmail({
-        // to: review.studentEmail,
-        to: "luke.waehner@gmail.com", // TEST MODE - change to review.studentEmail for production
+        to: review.studentEmail,
         subject: subject,
         htmlBody: htmlBody,
-        name: "Summit CRM",
+        name: "Summit Academic Support",
       });
 
       if (CONFIG.debugMode) {

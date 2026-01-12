@@ -719,11 +719,10 @@ const ReviewNotificationService = {
       } Need${requests.length === 1 ? "s" : ""} Review - Summit`;
 
       MailApp.sendEmail({
-        // to: advisorEmail,
-        to: "luke.waehner@gmail.com",
+        to: advisorEmail,
         subject: subject,
         htmlBody: htmlBody,
-        name: "Summit CRM",
+        name: "Summit Academic Support",
       });
 
       if (CONFIG.debugMode) {

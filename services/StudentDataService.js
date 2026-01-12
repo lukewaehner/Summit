@@ -313,4 +313,102 @@ const StudentDataService = {
       );
     }
   },
+
+  /**
+   * Marks a meeting as "notes sent" in the student's spreadsheet.
+   * Finds the meeting row matching the provided datetime string and sets column F to TRUE.
+   *
+   * @param {string} url - The URL of the student's spreadsheet
+   * @param {string} targetDatetime - The formatted datetime string to match (e.g., "Nov 24, 2025 (9:00 AM)")
+   * @returns {boolean} True if the meeting was found and updated, false otherwise
+   */
+  markMeetingNotesSent(url, targetDatetime) {
+    Logger.log("markMeetingNotesSent called");
+    Logger.log("URL: " + url);
+    Logger.log("Target Datetime: " + targetDatetime);
+
+    if (!url || !targetDatetime) {
+      Logger.log("ERROR: Missing URL or datetime");
+      return false;
+    }
+
+    const studentSs = spreadsheetHelperFunctions.openSpreadsheetWithUrl(url);
+    if (!studentSs) return false;
+
+    const sheet = studentSs.getSheetByName("Meetings");
+    if (!sheet) return false;
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 3) return false;
+
+    // Read Date (C) and Time (D) columns
+    const range = sheet.getRange(3, 3, lastRow - 2, 2);
+    const values = range.getValues();
+
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    for (let i = 0; i < values.length; i++) {
+      const [date, time] = values[i];
+      if (!date || !time) continue;
+
+      // === DUPLICATED FORMATTING LOGIC FROM getStudentMeetings ===
+      // Format date
+      let formattedDate = "";
+      if (date instanceof Date) {
+        const mon = months[date.getMonth()];
+        const day = date.getDate();
+        const year = date.getFullYear();
+        formattedDate = `${mon} ${day}, ${year}`;
+      } else {
+        formattedDate = String(date).trim();
+      }
+
+      // Format time
+      let formattedTime = "";
+      if (time instanceof Date) {
+        // Timezone adjustment
+        let hours = time.getHours() - 1;
+        let minutes = time.getMinutes();
+
+        if (hours < 0) hours = 23;
+
+        const ampm = hours >= 12 ? "PM" : "AM";
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        const minutesStr = minutes < 10 ? "0" + minutes : String(minutes);
+        formattedTime = `${hours}:${minutesStr} ${ampm}`;
+      } else {
+        formattedTime = String(time).trim();
+      }
+
+      const currentDatetime = `${formattedDate} (${formattedTime})`;
+      // ==========================================================
+
+      if (currentDatetime === targetDatetime) {
+        // Update the meeting as notes sent
+        const rowIndex = i + 3;
+        Logger.log(`Match found at row ${rowIndex}. Updating column F...`);
+
+        // Column F is index 6 (Notes Sent)
+        sheet.getRange(rowIndex, 6).setValue(true);
+        return true;
+      }
+    }
+
+    Logger.log("No matching meeting found");
+    return false;
+  },
 };

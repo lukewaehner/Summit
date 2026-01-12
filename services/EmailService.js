@@ -91,7 +91,7 @@ const EmailService = {
         to: recipientEmail,
         subject: subject,
         htmlBody: htmlBody,
-        name: "Summit CRM",
+        name: "Summit Academic Support",
       };
 
       // Add CC to parent if available
@@ -119,11 +119,28 @@ const EmailService = {
         Logger.log("Email sent successfully to: " + recipientEmail);
       }
 
+      // Mark meeting as sent in spreadsheet
+      let sheetUpdateMsg = "";
+      if (studentUrl) {
+        const marked = StudentDataService.markMeetingNotesSent(
+          studentUrl,
+          datetime
+        );
+        if (marked) {
+          Logger.log("Spreadsheet updated: marked meeting as sent");
+          sheetUpdateMsg = " (Spreadsheet updated)";
+        } else {
+          Logger.log("WARNING: Failed to mark meeting as sent in spreadsheet");
+          sheetUpdateMsg = " (Spreadsheet update failed)";
+        }
+      }
+
       // Build success message
       let successMsg = "Email sent successfully to " + recipientEmail;
       if (parentEmail) {
         successMsg += " (CC: " + parentEmail + ")";
       }
+      successMsg += sheetUpdateMsg;
 
       return {
         success: true,
