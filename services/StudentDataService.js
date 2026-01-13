@@ -30,7 +30,7 @@ const StudentDataService = {
     if (!studentDataSheet) {
       throw new Error(
         "Student Data sheet not found: " +
-          CONFIG.sheets.broadcastSheet.subSheets.studentData
+        CONFIG.sheets.broadcastSheet.subSheets.studentData
       );
     }
 
@@ -109,9 +109,9 @@ const StudentDataService = {
     // Early exit if no data (header only or empty sheet)
     if (lastRow < 2) return [];
 
-    // Read columns C, D, E (date, time, notes) starting from row 3
+    // Read columns C, D (date, notes) starting from row 3
     // Note: Row 2 might be headers, row 3 is first data row
-    const values = studentSheet.getRange(3, 3, lastRow - 2, 3).getValues();
+    const values = studentSheet.getRange(4, 3, lastRow - 2, 2).getValues();
 
     // Month names for formatting
     const months = [

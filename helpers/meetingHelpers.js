@@ -91,14 +91,8 @@ const meetingHelpers = {
       Logger.log(`     [buildMeetingRows] First meeting sample:`);
       Logger.log(`       - name: ${firstMeeting.name}`);
       Logger.log(
-        `       - date: ${
-          firstMeeting.date
+        `       - date: ${firstMeeting.date
         } (type: ${typeof firstMeeting.date})`
-      );
-      Logger.log(
-        `       - time: ${
-          firstMeeting.time
-        } (type: ${typeof firstMeeting.time})`
       );
       if (firstMeeting.date instanceof Date) {
         Logger.log(`       - date.getTime(): ${firstMeeting.date.getTime()}`);
@@ -170,11 +164,11 @@ const meetingHelpers = {
       );
     }
 
-    // Convert to sheet row format: [status, date, time]
-    // These correspond to columns B, C, D in the spreadsheet
+    // Convert to sheet row format: [status, date]
+    // These correspond to columns B, C in the spreadsheet
     const rows = ordered.map((entry) => {
       const m = entry.meeting;
-      return [entry.status, m.date, m.time];
+      return [entry.status, m.date];
     });
 
     return rows;

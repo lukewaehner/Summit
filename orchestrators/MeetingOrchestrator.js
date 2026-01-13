@@ -100,8 +100,7 @@ function loadMeetings() {
 
       if (verbose) {
         Logger.log(
-          `[${i + 1}/${students.length}] ${student.name}: ${
-            meetingsForStudent.length
+          `[${i + 1}/${students.length}] ${student.name}: ${meetingsForStudent.length
           } meetings`
         );
       }
@@ -145,17 +144,31 @@ function loadMeetings() {
           student.name
         );
 
-        // Clear existing B:D starting at row 3
+        // Clear existing B:C starting at row 3
         const existingLastRow = meetingsSheet.getLastRow();
         if (existingLastRow > 2) {
-          meetingsSheet.getRange(3, 2, existingLastRow - 2, 3).clearContent();
+          meetingsSheet.getRange(4, 2, existingLastRow - 2, 2).clearContent();
         }
 
         if (rowsToWrite.length > 0) {
+          // Write the data to columns B and C
           meetingsSheet
-            .getRange(3, 2, rowsToWrite.length, 3)
+            .getRange(4, 2, rowsToWrite.length, 2)
             .setValues(rowsToWrite);
+          
           results.meetingsWritten += rowsToWrite.length;
+
+          // Copy formatting from row 4 down to all new rows
+          // Row 4 is the first data row (header is usually row 3 or above)
+          if (rowsToWrite.length > 1) {
+            const sourceRange = meetingsSheet.getRange(4, 2, 1, 2);
+            const targetRange = meetingsSheet.getRange(5, 2, rowsToWrite.length - 1, 2);
+            sourceRange.copyTo(targetRange, SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+            
+            if (verbose) {
+              Logger.log(`  └─ Copied formatting from row 4 to ${rowsToWrite.length - 1} subsequent rows`);
+            }
+          }
         }
 
         results.studentsUpdated++;
