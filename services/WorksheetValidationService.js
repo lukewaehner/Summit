@@ -5,7 +5,7 @@
  * 2. processTasksWorksheets() - Reads queue, copies/renames/moves files (fast, runs every 10 min)
  *
  * Validation Rule: Worksheet filenames must start with the student's last name.
- * If not, the file is copied, renamed with "{LastName} - {OriginalName}", moved to shared drive, and shared with student.
+ * If not, the file is copied, renamed with "{formattedName} - {OriginalName}", moved to shared drive, and shared with student.
  *
  * @namespace WorksheetValidationService
  */
@@ -24,7 +24,7 @@ const WorksheetValidationService = {
 
   /**
    * Column indices in WorksheetQueue sheet (0-based after header)
-   * Expected columns: A=Timestamp, B=StudentName, C=StudentEmail, D=LastName, E=OriginalFileId,
+   * Expected columns: A=Timestamp, B=StudentName, C=StudentEmail, D=formattedName, E=OriginalFileId,
    *                   F=OriginalFileName, G=TargetFolderId, H=CellRow, I=StudentSpreadsheetId,
    *                   J=Status, K=ProcessedAt, L=NewFileUrl, M=ErrorMessage
    */
@@ -68,7 +68,7 @@ const WorksheetValidationService = {
    * @param {string} fullName - The full name
    * @returns {string} The last name portion
    */
-  _extractLastName(fullName) {
+  _extractformattedName(fullName) {
     if (!fullName || typeof fullName !== "string") return "";
     const trimmed = fullName.trim();
     const spaceIndex = trimmed.indexOf(" ");
@@ -117,7 +117,7 @@ const WorksheetValidationService = {
 
   /**
    * Phase 1: Collects worksheet validation issues from all student spreadsheets.
-   * Scans Tasks sheet column H for worksheet links, checks if filename starts with LastName.
+   * Scans Tasks sheet column H for worksheet links, checks if filename starts with formattedName.
    * Writes issues to WorksheetQueue sheet for later processing.
    *
    * @param {Object} options - Optional configuration
@@ -155,8 +155,8 @@ const WorksheetValidationService = {
       let lastProcessedIndex = resetState
         ? 0
         : parseInt(
-            scriptProps.getProperty("lastProcessedWorksheetIndex") || "0"
-          );
+          scriptProps.getProperty("lastProcessedWorksheetIndex") || "0"
+        );
 
       // Open central sheets
       const broadcastSs = spreadsheetHelperFunctions.openSpreadsheetWithId(
@@ -374,10 +374,10 @@ const WorksheetValidationService = {
     }
 
     // Extract last name
-    const lastName = this._extractLastName(student.name);
+    const formattedName = student.name.trim();
 
     if (verbose) {
-      Logger.log(`  └─ Last name: "${lastName}"`);
+      Logger.log(`  └─ Last name: "${formattedName}"`);
     }
 
     // Get worksheet links from column H, starting at row 3
@@ -441,26 +441,24 @@ const WorksheetValidationService = {
         const file = DriveApp.getFileById(fileId);
         const fileName = file.getName();
         const lowerFileName = fileName.toLowerCase();
-        const lowerLastName = lastName.toLowerCase();
+        const lowerformattedName = formattedName.toLowerCase();
 
-        // Check if filename contains " - " and the part before it ends with the last name
-        // This handles "LastName - Original" AND "keep LastName - Original"
+        // Check if filename contains " - " and the part before it CONTAINS the last name
+        // This handles "formattedName - Original", "keep formattedName - Original", "keep formattedName keep - Original"
         const separatorIndex = lowerFileName.indexOf(" - ");
         let isCorrectlyNamed = false;
 
         if (separatorIndex !== -1) {
           // Extract the prefix part (before " - ")
-          const prefix = lowerFileName.substring(0, separatorIndex).trim();
+          const prefix = lowerFileName.substring(0, separatorIndex);
 
-          // Check if the prefix ENDS with the last name
-          // This allows "Smith", "keep Smith", "FINAL Smith", etc.
-          if (prefix.endsWith(lowerLastName)) {
+          // Check if the prefix contains the last name anywhere
+          if (prefix.includes(lowerformattedName)) {
             isCorrectlyNamed = true;
           }
         } else {
-          // Fallback: check if it starts with LastName directly (e.g. "Smith_Worksheet.pdf")
-          // though our standard format uses " - " separator
-          if (lowerFileName.startsWith(lowerLastName)) {
+          // Fallback: check if it starts with formattedName directly (e.g. "Smith_Worksheet.pdf")
+          if (lowerFileName.startsWith(lowerformattedName)) {
             isCorrectlyNamed = true;
           }
         }
@@ -479,7 +477,7 @@ const WorksheetValidationService = {
             timestamp, // Timestamp
             student.name, // StudentName
             student.email, // StudentEmail
-            lastName, // LastName
+            formattedName, // formattedName
             fileId, // OriginalFileId
             fileName, // OriginalFileName
             targetFolderId, // TargetFolderId
@@ -497,7 +495,7 @@ const WorksheetValidationService = {
 
         if (verbose) {
           Logger.log(
-            `     ├─ INFO: Row ${actualRow}: "${fileName}" → needs "${lastName} - ${fileName}"`
+            `     ├─ INFO: Row ${actualRow}: "${fileName}" → needs "${formattedName} - ${fileName}"`
           );
         }
       } catch (error) {
@@ -699,7 +697,7 @@ const WorksheetValidationService = {
   _processWorksheetItem(row, verbose) {
     const studentName = row[this.COLUMNS.STUDENT_NAME];
     const studentEmail = row[this.COLUMNS.STUDENT_EMAIL];
-    const lastName = row[this.COLUMNS.LAST_NAME];
+    const formattedName = row[this.COLUMNS.LAST_NAME];
     const originalFileId = row[this.COLUMNS.ORIGINAL_FILE_ID];
     const originalFileName = row[this.COLUMNS.ORIGINAL_FILE_NAME];
     const targetFolderId = row[this.COLUMNS.TARGET_FOLDER_ID];
@@ -722,8 +720,8 @@ const WorksheetValidationService = {
     }
     const originalFile = DriveApp.getFileById(originalFileId);
 
-    // Step 2: Create new filename with LastName prefix
-    const newFileName = `${lastName} - ${originalFileName}`;
+    // Step 2: Create new filename with formattedName prefix
+    const newFileName = `${formattedName} - ${originalFileName}`;
     if (verbose) {
       Logger.log(`  ├─ Step 2: New filename: "${newFileName}"`);
     }
