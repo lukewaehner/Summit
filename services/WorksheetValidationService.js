@@ -434,6 +434,8 @@ const WorksheetValidationService = {
       // But, after one of the duplicates is processed the next will be done on the next passthrough
       // Logically, clear duolicates further down the sheet?
       // Store an array of previosuly seen file keys, check against that and clear after
+      // Small array generation ( < 5 items per iter) vs Mapping tool for O(1) lookup?
+      // Mem wise which is better eff
       const uniqueKey = `${student.name}|${fileId}|${actualRow}`;
       if (existingItems.has(uniqueKey)) {
         filesSkipped++;
