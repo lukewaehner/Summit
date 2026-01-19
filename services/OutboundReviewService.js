@@ -653,7 +653,7 @@ const OutboundReviewService = {
    * @param {string} review.studentName - Name of the student
    * @param {string} review.studentEmail - Email address of the student
    * @param {string} review.taskTitle - Title of the reviewed task
-   * @param {string} review.documentLink - Link to the reviewed document (optional)
+   * @param {string} [review.documentLink] - Link to the reviewed document (optional)
    * @returns {Object} Result object with properties:
    * - success {boolean} - Whether the email was sent successfully
    * - message {string} - Success or error message

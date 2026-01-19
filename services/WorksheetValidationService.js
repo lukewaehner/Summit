@@ -140,7 +140,7 @@ const WorksheetValidationService = {
    * - 30 students: ~30-90 seconds (1-3s per sheet)
    * - Uses state persistence to resume if timeout occurs
    *
-   * @param {Object} [options] - Optional configuration
+   * @param {Object} [options={}] - Optional configuration object
    * @param {number} [options.batchSize=30] - Number of students to process per run
    * @param {boolean} [options.resetState=false] - Force restart from beginning
    * @returns {Object} Collection results with properties:

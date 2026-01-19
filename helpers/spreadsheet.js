@@ -3,20 +3,6 @@
  * Provides utilities for opening and manipulating Google Sheets.
  * @namespace spreadsheetHelperFunctions
  */
-
-/**
- * Opens a spreadsheet by URL with error handling.
- * Automatically normalizes URLs to remove user-specific parts like /u/0/.
- *
- * @param {string} url - The Google Sheets URL to open
- * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet|null} The spreadsheet object or null if error
- *
- * @example
- * const ss = spreadsheetHelperFunctions.openSpreadsheetWithUrl("https://docs.google.com/spreadsheets/d/ABC123/edit");
- * if (ss) {
- *   const sheet = ss.getActiveSheet();
- * }
- */
 const spreadsheetHelperFunctions = {
   /**
    * Normalizes a Google Sheets URL by removing user-specific parts like /u/0/
