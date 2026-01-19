@@ -1,11 +1,19 @@
 /**
  * Service for fetching and managing meeting data from spreadsheets.
+ * @namespace MeetingDataService
  */
 
 const MeetingDataService = {
   /**
    * Fetches all meetings from the meeting data sheet.
-   * @returns {Meeting[]} - An array of Meeting objects.
+   * Reads meeting data from the configured spreadsheet and constructs Meeting objects.
+   *
+   * @returns {Meeting[]} An array of Meeting objects. Returns empty array if sheet not found or no data.
+   * @throws {Error} If there are issues accessing the spreadsheet
+   *
+   * @example
+   * const meetings = MeetingDataService.getAllMeetings();
+   * Logger.log(`Found ${meetings.length} meetings`);
    */
   getAllMeetings() {
     const ss = spreadsheetHelperFunctions.openSpreadsheetWithId(
@@ -78,8 +86,17 @@ const MeetingDataService = {
 
   /**
    * Groups meetings by student name.
-   * @param {Meeting[]} meetings - Array of all meetings
-   * @returns {Map<string, Meeting[]>}
+   * Creates a map where keys are student names and values are arrays of their meetings.
+   *
+   * @param {Meeting[]} meetings - Array of all meetings to group
+   * @returns {Map<string, Meeting[]>} Map of student names to their meetings
+   *
+   * @example
+   * const allMeetings = MeetingDataService.getAllMeetings();
+   * const grouped = MeetingDataService.groupMeetingsByStudent(allMeetings);
+   * grouped.forEach((meetings, studentName) => {
+   *   Logger.log(`${studentName} has ${meetings.length} meetings`);
+   * });
    */
   groupMeetingsByStudent(meetings) {
     if (CONFIG.debugMode) {
