@@ -430,6 +430,7 @@ const WorksheetValidationService = {
 
       // Check if already in queue
       const actualRow = this.TASK_SHEET_CONFIG.startRow + rowIdx;
+      // NOTE: Does this need actualRow removed? If yes, will this propgate correctly
       const uniqueKey = `${student.name}|${fileId}|${actualRow}`;
       if (existingItems.has(uniqueKey)) {
         filesSkipped++;
