@@ -1,6 +1,7 @@
 /**
  * Orchestrates the loading and distribution of meetings to student spreadsheets.
  * This is the main entry point for the meeting sync process.
+ * @namespace MeetingOrchestrator
  */
 
 /**
@@ -10,7 +11,19 @@
  * 2. Fetches all student data (names and spreadsheet URLs)
  * 3. For each student, opens their spreadsheet and updates the Meetings sheet
  *
- * @returns {Object} Results object with counts and details
+ * @returns {Object} Results object with properties:
+ * - totalMeetings {number} - Total number of meetings fetched
+ * - totalStudents {number} - Total number of students processed
+ * - studentsUpdated {number} - Number of students successfully updated
+ * - studentsSkipped {number} - Number of students skipped due to errors
+ * - meetingsWritten {number} - Total meeting rows written
+ * - errors {Array<Object>} - Array of error objects with student and error message
+ * - executionTime {number} - Execution time in milliseconds
+ *
+ * @example
+ * // Run from menu or trigger
+ * const results = loadMeetings();
+ * Logger.log(`Updated ${results.studentsUpdated} students with ${results.meetingsWritten} meetings`);
  */
 function loadMeetings() {
   const startTime = Date.now();
@@ -228,10 +241,17 @@ function loadMeetings() {
 /**
  * Sends an email with meeting notes for selected student.
  * Only the most recent meeting is sent.
+ *
  * @param {string} _url - The URL of the student's spreadsheet (unused, for future use)
- * @returns {boolean} - True if the email was sent successfully, false otherwise
+ * @returns {boolean} True if the email was sent successfully, false otherwise
+ *
+ * @todo Implement email functionality
+ * @note This must be called from the menu bar
+ *
+ * @example
+ * // Called from the menu bar in a student's spreadsheet
+ * const success = sendMeetingNotes(spreadsheetUrl);
  */
-
 function sendMeetingNotes(_url) {
   // NOTE: This must be called from the menu bar
   // TODO: Implement email functionality
