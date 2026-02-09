@@ -60,12 +60,18 @@ const MeetingDataService = {
         break;
       }
 
+      // Fix date offset by setting to noon to avoid timezone shifts
+      let adjustedDate = date;
+      if (date instanceof Date) {
+        adjustedDate = new Date(date);
+        adjustedDate.setHours(12, 0, 0, 0);
+      }
 
       // Create Meeting with correct column mapping
       const meeting = new Meeting(
         name,
         email || "",
-        date,
+        adjustedDate,
         advisor,
         description
       );
