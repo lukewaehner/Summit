@@ -430,6 +430,10 @@ const WorksheetValidationService = {
 
       // Check if already in queue
       const actualRow = this.TASK_SHEET_CONFIG.startRow + rowIdx;
+      // NOTE: Does this need actualRow removed? If yes, will this propgate correctly.
+      // But, after one of the duplicates is processed the next will be done on the next passthrough
+      // Logically, clear duolicates further down the sheet?
+      // Store an array of previosuly seen file keys, check against that and clear after
       const uniqueKey = `${student.name}|${fileId}|${actualRow}`;
       if (existingItems.has(uniqueKey)) {
         filesSkipped++;
