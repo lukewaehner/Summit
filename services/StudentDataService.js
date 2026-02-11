@@ -109,9 +109,16 @@ const StudentDataService = {
     // Early exit if no data (header only or empty sheet)
     if (lastRow < 2) return [];
 
-    // Read columns C, D (date, notes) starting from row 3
-    // Note: Row 2 might be headers, row 3 is first data row
-    const values = studentSheet.getRange(4, 3, lastRow - 2, 2).getValues();
+    // Read columns B, C, D (Status, Date, Notes) starting from row 4
+    // Note: Row 3 is usually header, row 4 is first data row
+    const values = studentSheet.getRange(4, 2, lastRow - 3, 3).getValues();
+
+    if (CONFIG.debugMode) {
+      Logger.log(`Read ${values.length} rows from Meetings sheet (Columns B, C, D)`);
+      if (values.length > 0) {
+        Logger.log(`First row raw values: ${JSON.stringify(values[0])}`);
+      }
+    }
 
     // Month names for formatting
     const months = [
@@ -131,8 +138,11 @@ const StudentDataService = {
 
     // Filter out empty rows and format dates/times into strings
     return values
-      .filter(([date, time, notes]) => date && time && notes)
-      .map(([date, time, notes]) => {
+      .filter(([_status, date, notes]) => {
+         // Valid if Date AND Notes are present
+         return date && String(date).trim() !== "" && notes && String(notes).trim() !== "";
+      })
+      .map(([_status, date, notes]) => {
         // Format date as "Nov 24, 2025"
         let formattedDate = "";
         if (date instanceof Date) {
@@ -144,36 +154,14 @@ const StudentDataService = {
           formattedDate = String(date).trim();
         }
 
-        // Format time as "9:00 AM"
-        let formattedTime = "";
-        if (time instanceof Date) {
-          // Use hours and subtract 1 to correct timezone offset
-          // Google Sheets stores times with timezone that needs adjustment
-          let hours = time.getHours() - 1;
-          let minutes = time.getMinutes();
-
-          // Handle negative hours (wrap to previous day)
-          if (hours < 0) {
-            hours = 23;
-          }
-
-          const ampm = hours >= 12 ? "PM" : "AM";
-          hours = hours % 12;
-          hours = hours ? hours : 12; // Convert 0 to 12
-          const minutesStr = minutes < 10 ? "0" + minutes : String(minutes);
-          formattedTime = `${hours}:${minutesStr} ${ampm}`;
-        } else {
-          formattedTime = String(time).trim();
-        }
-
-        // Combine into datetime string
-        const datetime = `${formattedDate} (${formattedTime})`;
+        // Clean notes
+        const cleanNotes = String(notes || "").trim();
 
         return {
           date: formattedDate,
-          time: formattedTime,
-          datetime: datetime,
-          notes: String(notes).trim(),
+          time: "", // Time column removed, not used
+          datetime: formattedDate, // Just the date
+          notes: cleanNotes,
         };
       });
   },
@@ -247,39 +235,48 @@ const StudentDataService = {
         // Skip columns with no URL (empty student slot)
         if (!studentUrl) continue;
 
-        // Fetch email from student's individual spreadsheet (Home Page, cell F5)
+        // Fetch student name (Home Page C1) and email (Home Page F5)
         let studentEmail = "";
+        let fetchedName = ""; // Name from the student's own spreadsheet
+
         try {
           const studentSs =
             spreadsheetHelperFunctions.openSpreadsheetWithUrl(studentUrl);
           const homePage = studentSs.getSheetByName("Home Page");
 
           if (homePage) {
-            // Read email from cell F5
-            const emailCell = homePage.getRange("F5").getValue();
-            studentEmail = String(emailCell || "").trim();
+            // Read Name (C1) and Email (F5)
+            // Using batch get for efficiency
+            const data = homePage.getRangeList(["C1", "F5"]).getRanges();
+            fetchedName = String(data[0].getValue() || "").trim();
+            studentEmail = String(data[1].getValue() || "").trim();
 
             if (CONFIG.debugMode) {
-              Logger.log(`Fetched email for ${studentName}: ${studentEmail}`);
+              Logger.log(`Fetched details for ${studentUrl}:`);
+              Logger.log(`  Name (C1): ${fetchedName}`);
+              Logger.log(`  Email (F5): ${studentEmail}`);
             }
           } else {
             Logger.log(
-              `Warning: 'Home Page' sheet not found for ${studentName}`
+              `Warning: 'Home Page' sheet not found for ${studentUrl}`
             );
           }
         } catch (error) {
           Logger.log(
-            `Error fetching email for ${studentName}: ${error.toString()}`
+            `Error fetching details for ${studentUrl}: ${error.toString()}`
           );
-          // Continue with empty email rather than failing entire sync
+          // Continue with empty details rather than failing entire sync
         }
+
+        // Use the name from the student's sheet (C1) if available, otherwise fallback to advisor sheet name
+        const finalName = fetchedName || studentName;
 
         // Render jackie / maggie
         const advisorTag = sheet === maggieSheet ? "Maggie" : "Jackie";
 
         // Add [name, url, email] triplet to write list
         rowsToWrite.push([
-          String(studentName || ""),
+          String(finalName || ""),
           String(studentUrl || ""),
           studentEmail,
           advisorTag,
