@@ -589,9 +589,16 @@ const OutboundReviewService = {
   /**
    * Gets the email address for a given student.
    * First tries StudentData sheet (column C), then fallback to Home Page F5.
+   *
    * @private
-   * @param {string} studentName - Name of the student
+   * @param {string} studentName - Name of the student to look up
    * @returns {string|null} Email address or null if not found
+   *
+   * @example
+   * const email = _getStudentEmail("John Smith");
+   * if (email) {
+   *   Logger.log(`Found email: ${email}`);
+   * }
    */
   _getStudentEmail(studentName) {
     try {
@@ -640,9 +647,16 @@ const OutboundReviewService = {
   /**
    * Sends a notification email to a student about their reviewed work.
    * Uses HTML template for professional formatting.
+   *
    * @private
-   * @param {Object} review - Review object with student info
-   * @returns {Object} Result object
+   * @param {Object} review - Review object containing notification details
+   * @param {string} review.studentName - Name of the student
+   * @param {string} review.studentEmail - Email address of the student
+   * @param {string} review.taskTitle - Title of the reviewed task
+   * @param {string} [review.documentLink] - Link to the reviewed document (optional)
+   * @returns {Object} Result object with properties:
+   * - success {boolean} - Whether the email was sent successfully
+   * - message {string} - Success or error message
    */
   _sendStudentNotification(review) {
     try {
@@ -698,7 +712,14 @@ const OutboundReviewService = {
 
   /**
    * Formats a timestamp for display in emails.
+   * Converts Date object to readable format like "Jan 15, 3:45 PM".
+   *
    * @private
+   * @param {Date} timestamp - The timestamp to format
+   * @returns {string} Formatted timestamp string, or "Unknown time" if invalid
+   *
+   * @example
+   * _formatTimestamp(new Date()) // Returns: "Jan 19, 11:30 AM"
    */
   _formatTimestamp(timestamp) {
     if (!timestamp || !(timestamp instanceof Date)) {
@@ -733,12 +754,15 @@ const OutboundReviewService = {
 
   /**
    * Creates the OutboundQueue sheet with proper headers.
-   * Run this once during setup.
+   * Run this once during setup to initialize the outbound queue.
    *
-   * @returns {Object} Result object
+   * @returns {Object} Result object with properties:
+   * - success {boolean} - Whether the operation succeeded
+   * - message {string} - Success or error message
    *
    * @example
-   * OutboundReviewService.setupOutboundQueue();
+   * const result = OutboundReviewService.setupOutboundQueue();
+   * Logger.log(result.message);
    */
   setupOutboundQueue() {
     try {

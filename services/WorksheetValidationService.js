@@ -62,11 +62,15 @@ const WorksheetValidationService = {
   /**
    * Extracts the last name from a full name.
    * Takes everything after the first whitespace.
-   * "John Smith" -> "Smith"
-   * "Mary Jane Watson" -> "Jane Watson"
+   *
    * @private
-   * @param {string} fullName - The full name
-   * @returns {string} The last name portion
+   * @param {string} fullName - The full name to parse
+   * @returns {string} The last name portion, or the entire name if no space found
+   *
+   * @example
+   * _extractformattedName("John Smith") // Returns: "Smith"
+   * _extractformattedName("Mary Jane Watson") // Returns: "Jane Watson"
+   * _extractformattedName("Madonna") // Returns: "Madonna"
    */
   _extractformattedName(fullName) {
     if (!fullName || typeof fullName !== "string") return "";
@@ -78,9 +82,16 @@ const WorksheetValidationService = {
 
   /**
    * Extracts file ID from a Google Drive/Docs URL.
+   * Supports various Google URL formats (docs, sheets, drive).
+   *
    * @private
-   * @param {string} url - The Google Drive URL
+   * @param {string} url - The Google Drive URL to parse
    * @returns {string|null} The file ID or null if not found
+   *
+   * @example
+   * _extractFileId("https://docs.google.com/document/d/ABC123/edit") // Returns: "ABC123"
+   * _extractFileId("https://drive.google.com/file/d/XYZ789/view") // Returns: "XYZ789"
+   * _extractFileId("invalid-url") // Returns: null
    */
   _extractFileId(url) {
     if (!url || typeof url !== "string") return null;
@@ -107,9 +118,14 @@ const WorksheetValidationService = {
 
   /**
    * Extracts folder ID from a Google Drive folder URL.
+   * Uses the same logic as file ID extraction.
+   *
    * @private
-   * @param {string} url - The Google Drive folder URL
+   * @param {string} url - The Google Drive folder URL to parse
    * @returns {string|null} The folder ID or null if not found
+   *
+   * @example
+   * _extractFolderId("https://drive.google.com/drive/folders/ABC123") // Returns: "ABC123"
    */
   _extractFolderId(url) {
     return this._extractFileId(url); // Same logic works for folders
@@ -120,10 +136,29 @@ const WorksheetValidationService = {
    * Scans Tasks sheet column H for worksheet links, checks if filename starts with formattedName.
    * Writes issues to WorksheetQueue sheet for later processing.
    *
-   * @param {Object} options - Optional configuration
-   * @param {number} options.batchSize - Number of students to process per run (default: 30)
-   * @param {boolean} options.resetState - Force restart from beginning (default: false)
-   * @returns {Object} Collection results with counts and timing
+   * **Performance:**
+   * - 30 students: ~30-90 seconds (1-3s per sheet)
+   * - Uses state persistence to resume if timeout occurs
+   *
+   * @param {Object} [options={}] - Optional configuration object
+   * @param {number} [options.batchSize=30] - Number of students to process per run
+   * @param {boolean} [options.resetState=false] - Force restart from beginning
+   * @returns {Object} Collection results with properties:
+   * - scanned {number} - Number of students scanned
+   * - issuesFound {number} - Number of worksheet issues found
+   * - skipped {number} - Number of students skipped
+   * - errors {Array<Object>} - Array of error objects
+   * - executionTime {number} - Execution time in milliseconds
+   * - completed {boolean} - Whether the full scan completed
+   *
+   * @example
+   * // Set up time-based trigger:
+   * // Apps Script Editor → Triggers → Add Trigger
+   * // Function: collectTasksWorksheets
+   * // Event: Time-driven, Hour timer, Every hour
+   *
+   * const results = WorksheetValidationService.collectTasksWorksheets();
+   * Logger.log(`Found ${results.issuesFound} worksheet issues`);
    */
   collectTasksWorksheets(options) {
     const startTime = Date.now();
@@ -295,7 +330,11 @@ const WorksheetValidationService = {
 
   /**
    * Gets existing queue items for duplicate checking.
+   * Returns a set of unique identifiers for pending/processed items.
+   *
    * @private
+   * @param {GoogleAppsScript.Spreadsheet.Sheet} worksheetQueue - The WorksheetQueue sheet
+   * @returns {Set<string>} Set of unique keys in format "studentName|fileId|cellRow"
    */
   _getExistingQueueItems(worksheetQueue) {
     const lastRow = worksheetQueue.getLastRow();
@@ -321,11 +360,14 @@ const WorksheetValidationService = {
 
   /**
    * Scans a single student's Tasks sheet for worksheet issues.
+   * Checks if worksheet filenames start with the student's formatted name.
+   *
    * @private
-   * @param {Object} student - Student object with name, email, url
-   * @param {Object} worksheetQueue - The queue sheet to write to
-   * @param {Set} existingItems - Set of existing queue items for dedup
+   * @param {Object} student - Student object with name, email, url properties
+   * @param {GoogleAppsScript.Spreadsheet.Sheet} worksheetQueue - The queue sheet to write to
+   * @param {Set<string>} existingItems - Set of existing queue items for dedup
    * @param {boolean} verbose - Whether to log verbose output
+   * @returns {number} Number of issues found for this student
    */
   _scanStudentWorksheets(student, worksheetQueue, existingItems, verbose) {
     let issuesFound = 0;
@@ -525,7 +567,24 @@ const WorksheetValidationService = {
    * Phase 2: Processes pending worksheet issues from the queue.
    * For each issue: copies file, renames, moves to shared drive, shares with student, updates cell.
    *
-   * @returns {Object} Processing results with counts and timing
+   * **Performance:**
+   * - 20-30 files per run due to Drive API quotas
+   * - Each file copy/move takes 1-2 seconds
+   *
+   * @returns {Object} Processing results with properties:
+   * - processed {number} - Number of items processed
+   * - success {number} - Number of successful operations
+   * - errors {Array<Object>} - Array of error objects with student, file, and error message
+   * - executionTime {number} - Execution time in milliseconds
+   *
+   * @example
+   * // Set up time-based trigger:
+   * // Apps Script Editor → Triggers → Add Trigger
+   * // Function: processTasksWorksheets
+   * // Event: Time-driven, Minutes timer, Every 10 minutes
+   *
+   * const results = WorksheetValidationService.processTasksWorksheets();
+   * Logger.log(`Processed ${results.success} of ${results.processed} worksheets`);
    */
   processTasksWorksheets() {
     const startTime = Date.now();
@@ -693,10 +752,16 @@ const WorksheetValidationService = {
 
   /**
    * Processes a single worksheet item from the queue.
+   * Copies the file, renames it with formatted name prefix, moves to target folder,
+   * shares with student, and updates the spreadsheet cell.
+   *
    * @private
-   * @param {Array} row - The queue row data
+   * @param {Array} row - The queue row data array
    * @param {boolean} verbose - Whether to log verbose output
-   * @returns {Object} Result with success status and newFileUrl or error
+   * @returns {Object} Result with properties:
+   * - success {boolean} - Whether the operation succeeded
+   * - newFileUrl {string} - URL of the new file (if success)
+   * - error {string} - Error message (if failure)
    */
   _processWorksheetItem(row, verbose) {
     const studentName = row[this.COLUMNS.STUDENT_NAME];
@@ -801,9 +866,17 @@ const WorksheetValidationService = {
 
   /**
    * Creates the WorksheetQueue sheet with proper headers.
-   * Run this once during setup.
+   * Run this once during setup to initialize the queue.
    *
-   * @returns {Object} Result object
+   * @returns {Object} Result object with properties:
+   * - success {boolean} - Whether the operation succeeded
+   * - message {string} - Success or error message
+   *
+   * @example
+   * const result = WorksheetValidationService.setupWorksheetQueue();
+   * if (result.success) {
+   *   Logger.log("Queue created successfully");
+   * }
    */
   setupWorksheetQueue() {
     try {
@@ -884,9 +957,15 @@ const WorksheetValidationService = {
 
   /**
    * Resets the collection state to start from the beginning.
-   * Useful for forcing a full re-scan.
+   * Useful for forcing a full re-scan of all students.
    *
-   * @returns {Object} Result object
+   * @returns {Object} Result object with properties:
+   * - success {boolean} - Whether the operation succeeded
+   * - message {string} - Success or error message
+   *
+   * @example
+   * WorksheetValidationService.resetCollectionState();
+   * // Next run will start from student index 0
    */
   resetCollectionState() {
     try {
@@ -907,8 +986,18 @@ const WorksheetValidationService = {
 
   /**
    * Gets the current collection progress.
+   * Shows how many students have been processed in the current scan.
    *
-   * @returns {Object} Progress information
+   * @returns {Object} Progress information with properties:
+   * - lastProcessedIndex {number} - Index of last processed student
+   * - totalStudents {number} - Total number of students
+   * - percentComplete {number} - Percentage complete (0-100)
+   * - isComplete {boolean} - Whether the scan is complete
+   * - error {string} - Error message if operation failed
+   *
+   * @example
+   * const progress = WorksheetValidationService.getCollectionProgress();
+   * Logger.log(`Progress: ${progress.percentComplete}% complete`);
    */
   getCollectionProgress() {
     try {

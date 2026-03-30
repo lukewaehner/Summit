@@ -641,9 +641,16 @@ const ReviewNotificationService = {
 
   /**
    * Gets the advisor name for a given student by looking up StudentData sheet.
+   *
    * @private
-   * @param {string} studentName - Name of the student
+   * @param {string} studentName - Name of the student to look up
    * @returns {string|null} Advisor name or null if not found
+   *
+   * @example
+   * const advisor = _getAdvisorForStudent("John Smith");
+   * if (advisor) {
+   *   Logger.log(`Advisor: ${advisor}`);
+   * }
    */
   _getAdvisorForStudent(studentName) {
     try {
@@ -658,9 +665,15 @@ const ReviewNotificationService = {
 
   /**
    * Groups review requests by advisor.
+   * Creates an object where keys are advisor names and values are arrays of requests.
+   *
    * @private
-   * @param {Array<Object>} requests - Array of request objects
+   * @param {Array<Object>} requests - Array of request objects with advisor property
    * @returns {Object} Requests grouped by advisor name
+   *
+   * @example
+   * const grouped = _groupByAdvisor(requests);
+   * // Returns: { "Maggie": [...], "Jackie": [...] }
    */
   _groupByAdvisor(requests) {
     const grouped = {};
@@ -679,10 +692,19 @@ const ReviewNotificationService = {
   /**
    * Sends a notification email to an advisor about pending review requests.
    * Uses HTML template for professional formatting.
+   *
    * @private
    * @param {string} advisorName - Name of the advisor
    * @param {Array<Object>} requests - Review requests for this advisor
-   * @returns {Object} Result object
+   * @returns {Object} Result object with properties:
+   * - success {boolean} - Whether the email was sent successfully
+   * - message {string} - Success or error message
+   *
+   * @example
+   * const result = _sendAdvisorNotification("Maggie", requests);
+   * if (!result.success) {
+   *   Logger.log(`Failed: ${result.message}`);
+   * }
    */
   _sendAdvisorNotification(advisorName, requests) {
     try {
@@ -746,7 +768,11 @@ const ReviewNotificationService = {
 
   /**
    * Gets advisor email address from name.
+   * Maps known advisor names to their email addresses.
+   *
    * @private
+   * @param {string} advisorName - Name of the advisor (e.g., "Maggie", "Jackie")
+   * @returns {string|null} Email address or null if advisor not found
    */
   _getAdvisorEmail(advisorName) {
     // Map advisor names to email addresses
@@ -760,7 +786,14 @@ const ReviewNotificationService = {
 
   /**
    * Formats a timestamp for display in emails.
+   * Converts Date object to readable format like "Jan 15, 3:45 PM".
+   *
    * @private
+   * @param {Date} timestamp - The timestamp to format
+   * @returns {string} Formatted timestamp string, or "Unknown time" if invalid
+   *
+   * @example
+   * _formatTimestamp(new Date()) // Returns: "Jan 19, 11:30 AM"
    */
   _formatTimestamp(timestamp) {
     if (!timestamp || !(timestamp instanceof Date)) {
@@ -797,11 +830,16 @@ const ReviewNotificationService = {
    * Marks a review request as completed.
    * Advisors can call this after reviewing a student's work.
    *
-   * @param {string} studentName - Name of the student
-   * @returns {Object} Result object
+   * @param {string} studentName - Name of the student whose review is complete
+   * @returns {Object} Result object with properties:
+   * - success {boolean} - Whether the operation succeeded
+   * - message {string} - Success or error message
    *
    * @example
-   * ReviewNotificationService.markAsCompleted("John Doe");
+   * const result = ReviewNotificationService.markAsCompleted("John Doe");
+   * if (result.success) {
+   *   Logger.log("Review marked as completed");
+   * }
    */
   markAsCompleted(studentName) {
     try {
@@ -867,12 +905,15 @@ const ReviewNotificationService = {
 
   /**
    * Creates the ReviewQueue sheet with proper headers.
-   * Run this once during setup.
+   * Run this once during setup to initialize the review queue.
    *
-   * @returns {Object} Result object
+   * @returns {Object} Result object with properties:
+   * - success {boolean} - Whether the operation succeeded
+   * - message {string} - Success or error message
    *
    * @example
-   * ReviewNotificationService.setupReviewQueue();
+   * const result = ReviewNotificationService.setupReviewQueue();
+   * Logger.log(result.message);
    */
   setupReviewQueue() {
     try {
