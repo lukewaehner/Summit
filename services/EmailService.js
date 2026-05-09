@@ -12,36 +12,23 @@ const EmailService = {
   _TEMPLATES_PATH: "ui/templates/",
 
   /**
-   * Validates an email address format.
+   * Helper: Validates email format.
    * @private
-   * @param {string} email - Email address to validate
-   * @returns {boolean} True if email is valid
    */
   _isValidEmail(email) {
     return email && typeof email === "string" && email.includes("@");
   },
 
   /**
-   * Sends meeting notes email to a student, with optional CC to parent.
-   * Creates a beautifully formatted HTML email using the MeetingNotesTemplate.
-   * Parent email is looked up from F11 on the student's Home Page.
+   * Sends meeting notes email to a student and optionally their parent.
+   * Also marks the meeting as "sent" in the student's spreadsheet.
    *
-   * @param {string} studentName - Name of the student
-   * @param {string} datetime - Formatted date and time of the meeting
-   * @param {string} notes - Meeting notes content
+   * @param {string} studentName - Student's name
+   * @param {string} datetime - Formatted meeting date/time
+   * @param {string} notes - Content of the meeting notes
    * @param {string} recipientEmail - Student's email address
-   * @param {string} [studentUrl] - URL to student's spreadsheet (for parent lookup)
-   * @returns {Object} Result object with success status and message
-   * @throws {Error} If validation fails or email cannot be sent
-   *
-   * @example
-   * EmailService.sendMeetingNotes(
-   *   "John Doe",
-   *   "Jan 15, 2024 (10:00 AM)",
-   *   "Discussed project progress...",
-   *   "john.doe@example.com",
-   *   "https://docs.google.com/spreadsheets/d/..."
-   * );
+   * @param {string} [studentUrl] - URL for parent email lookup and marking sent
+   * @returns {Object} { success: boolean, message: string }
    */
   sendMeetingNotes(studentName, datetime, notes, recipientEmail, studentUrl) {
     try {
@@ -156,10 +143,8 @@ const EmailService = {
   },
 
   /**
-   * Gets the parent email from a student's Home Page F11.
+   * Helper: Fetches parent email from Home Page cell F11.
    * @private
-   * @param {string} studentUrl - URL to student's spreadsheet
-   * @returns {string|null} Parent email or null if not found
    */
   _getParentEmail(studentUrl) {
     try {

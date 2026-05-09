@@ -6,15 +6,9 @@
 
 const StudentDataService = {
   /**
-   * Fetches all student data (name, URL, email, and advisor) from the Student Data sheet.
-   * This reads from the broadcast spreadsheet's Student Data tab.
+   * Fetches student data (Name, URL, Email, Advisor) from the central Student Data sheet.
    *
-   * @returns {Array<{name: string, url: string, email: string, advisor: string}>} Array of student objects with name, spreadsheet URL, email, and advisor
-   * @throws {Error} If broadcast spreadsheet or Student Data sheet cannot be opened
-   *
-   * @example
-   * const students = StudentDataService.getAllStudents();
-   * // Returns: [{ name: "John Doe", url: "https://docs.google.com/...", email: "john@example.com", advisor: "Maggie" }, ...]
+   * @returns {Array<{name: string, url: string, email: string, advisor: string}>} List of students
    */
   getAllStudents() {
     const broadcastSs = spreadsheetHelperFunctions.openSpreadsheetWithId(
@@ -66,17 +60,11 @@ const StudentDataService = {
   },
 
   /**
-   * Fetches all meetings for a specific student from their individual spreadsheet.
-   * Reads from the "Meetings" sheet, columns C:E (date, time, notes), starting from row 3.
-   * Formats dates and times into human-readable strings before returning.
+   * Fetches meetings from a student's spreadsheet (columns B, C, D).
+   * Reads Date and Notes, filtering out incomplete entries.
    *
-   * @param {string} url - The full URL to the student's spreadsheet
-   * @returns {Array<{date: string, time: string, datetime: string, notes: string}>} Array of formatted meeting objects
-   * @throws {Error} If the spreadsheet cannot be opened or Meetings sheet doesn't exist
-   *
-   * @example
-   * const meetings = StudentDataService.getStudentMeetings("https://docs.google.com/...");
-   * // Returns: [{ date: "Nov 24, 2025", time: "9:00 AM", datetime: "Nov 24, 2025 (9:00 AM)", notes: "..." }, ...]
+   * @param {string} url - The student's spreadsheet URL
+   * @returns {Array<{date: string, time: string, datetime: string, notes: string}>} Formatted meeting objects
    */
   getStudentMeetings(url) {
     Logger.log("StudentDataService.getStudentMeetings called");
@@ -167,22 +155,8 @@ const StudentDataService = {
   },
 
   /**
-   * Updates the Student Data sheet by consolidating data from advisor sheets.
-   * Extracts URLs (row 2) and names (row 3) from Maggie and Jackie sheets,
-   * fetches email addresses from each student's 'Home Page' sheet (cell F5),
-   * then writes them to the Student Data sheet for centralized access.
-   *
-   * This function:
-   * 1. Reads URLs and names from advisor sheets (Maggie's Data, Jackie's Data)
-   * 2. For each student URL, opens their spreadsheet and reads email from Home Page!F5
-   * 3. Clears existing data in Student Data sheet
-   * 4. Writes consolidated name/URL/email triplets
-   *
-   * @throws {Error} If broadcast spreadsheet or required sheets cannot be accessed
-   *
-   * @example
-   * StudentDataService.updateStudentDataSheet();
-   * // Student Data sheet now contains all students with emails from both advisors
+   * Updates the central Student Data sheet from advisor rosters (Maggie/Jackie).
+   * Fetches real names/emails from each student's individual spreadsheet.
    */
   updateStudentDataSheet() {
     const broadcastSs = spreadsheetHelperFunctions.openSpreadsheetWithId(
@@ -312,12 +286,11 @@ const StudentDataService = {
   },
 
   /**
-   * Marks a meeting as "notes sent" in the student's spreadsheet.
-   * Finds the meeting row matching the provided datetime string and sets column F to TRUE.
+   * Marks a specific meeting as "notes sent" in the student's spreadsheet.
    *
-   * @param {string} url - The URL of the student's spreadsheet
-   * @param {string} targetDatetime - The formatted datetime string to match (e.g., "Nov 24, 2025 (9:00 AM)")
-   * @returns {boolean} True if the meeting was found and updated, false otherwise
+   * @param {string} url - Student's spreadsheet URL
+   * @param {string} targetDatetime - Date/time string to match
+   * @returns {boolean} True if updated successfully
    */
   markMeetingNotesSent(url, targetDatetime) {
     Logger.log("markMeetingNotesSent called");

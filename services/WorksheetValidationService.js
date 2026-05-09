@@ -60,13 +60,10 @@ const WorksheetValidationService = {
   },
 
   /**
-   * Extracts the last name from a full name.
-   * Takes everything after the first whitespace.
-   * "John Smith" -> "Smith"
-   * "Mary Jane Watson" -> "Jane Watson"
+   * Helper: Extracts the Last Name (or Formatted Name) from a full name string.
+   * Currently returns the full trimmed name to support "formattedName" logic.
+   *
    * @private
-   * @param {string} fullName - The full name
-   * @returns {string} The last name portion
    */
   _extractformattedName(fullName) {
     if (!fullName || typeof fullName !== "string") return "";
@@ -116,14 +113,11 @@ const WorksheetValidationService = {
   },
 
   /**
-   * Phase 1: Collects worksheet validation issues from all student spreadsheets.
-   * Scans Tasks sheet column H for worksheet links, checks if filename starts with formattedName.
-   * Writes issues to WorksheetQueue sheet for later processing.
+   * Phase 1: Scans student sheets for improperly named worksheet files.
+   * Adds any files not matching "{StudentName} - {File}" to the processing queue.
    *
-   * @param {Object} options - Optional configuration
-   * @param {number} options.batchSize - Number of students to process per run (default: 30)
-   * @param {boolean} options.resetState - Force restart from beginning (default: false)
-   * @returns {Object} Collection results with counts and timing
+   * @param {Object} options - { batchSize: number, resetState: boolean }
+   * @returns {Object} Collection stats
    */
   collectTasksWorksheets(options) {
     const startTime = Date.now();
@@ -522,10 +516,10 @@ const WorksheetValidationService = {
   },
 
   /**
-   * Phase 2: Processes pending worksheet issues from the queue.
-   * For each issue: copies file, renames, moves to shared drive, shares with student, updates cell.
+   * Phase 2: Processes the worksheet queue.
+   * Copies, renames, moves, and shares files, then updates the student's sheet.
    *
-   * @returns {Object} Processing results with counts and timing
+   * @returns {Object} Processing stats
    */
   processTasksWorksheets() {
     const startTime = Date.now();

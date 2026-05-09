@@ -4,13 +4,12 @@
  */
 
 /**
- * Loads meetings into each student's individual spreadsheet.
- * Main orchestration function that:
- * 1. Fetches all meetings and groups by student
- * 2. Fetches all student data (names and spreadsheet URLs)
- * 3. For each student, opens their spreadsheet and updates the Meetings sheet
+ * Syncs meetings from the central sheet to every student's individual spreadsheet.
+ * - Fetches all meetings
+ * - Groups them by student
+ * - Writes to each student's "Meetings" sheet
  *
- * @returns {Object} Results object with counts and details
+ * @returns {Object} Sync statistics (total, updated, errors)
  */
 function loadMeetings() {
   const startTime = Date.now();
@@ -226,12 +225,8 @@ function loadMeetings() {
 }
 
 /**
- * Sends an email with meeting notes for selected student.
- * Only the most recent meeting is sent.
- * @param {string} _url - The URL of the student's spreadsheet (unused, for future use)
- * @returns {boolean} - True if the email was sent successfully, false otherwise
+ * Placeholder for sending meeting notes via menu (actual logic is in Main.js/EmailService).
  */
-
 function sendMeetingNotes(_url) {
   // NOTE: This must be called from the menu bar
   // TODO: Implement email functionality

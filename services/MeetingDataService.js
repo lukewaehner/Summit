@@ -4,8 +4,9 @@
 
 const MeetingDataService = {
   /**
-   * Fetches all meetings from the meeting data sheet.
-   * @returns {Meeting[]} - An array of Meeting objects.
+   * Fetches all meetings from the central Meeting Data sheet.
+   *
+   * @returns {Meeting[]} Array of meeting objects
    */
   getAllMeetings() {
     const ss = spreadsheetHelperFunctions.openSpreadsheetWithId(
@@ -83,9 +84,10 @@ const MeetingDataService = {
   },
 
   /**
-   * Groups meetings by student name.
-   * @param {Meeting[]} meetings - Array of all meetings
-   * @returns {Map<string, Meeting[]>}
+   * Groups a list of meetings by student name.
+   *
+   * @param {Meeting[]} meetings - List of meetings
+   * @returns {Map<string, Meeting[]>} Map of Student Name -> Meetings
    */
   groupMeetingsByStudent(meetings) {
     if (CONFIG.debugMode) {
